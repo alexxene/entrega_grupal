@@ -1,7 +1,7 @@
 ---
 title: "Entrega grupal"
 author: "Iratxe Valero (DNI:02724987Q), Ángela García Muñoz (DNI:01840008P),
-Javier Ruiz (DNI:25449733A)"
+Javier Ruiz (DNI:25449733A), Javier Muñoz Zacarés (DNI:55136745H)"
 format:
   revealjs:
     theme: [style.scss]
@@ -115,4 +115,3 @@ Una vez que tengas los elementos obligatorios de tu base de datos más o menos c
 Recuerda que el objetivo real es demostrar un dominio de las herramientas vistas a lo largo del curso. Y eso no se mide solo por la cantidad de herramientas utilizadas, sino también por la calidad en su ejecución.
 
 ## Deberéis tenerlo todo subido a Github con el enlace generado de manera correcta.
-
