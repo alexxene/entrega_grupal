@@ -109,15 +109,21 @@ Además de lo que consideres oportuno realizar, los siguientes elementos son obl
 7.  Contamos con muchos partidos que se presentan a las elecciones. Solo nos interesarán los siguientes partidos:
 
 -   PARTIDO SOCIALISTA OBRERO ESPAÑOL (cuidado: tiene/tenía federaciones - sucursales - con otros nombres).
+
 -   PARTIDO POPULAR
+
 -   CIUDADANOS (cuidado: tiene/tenía federaciones - sucursales - con otros nombres).
+
 -   PARTIDO NACIONALISTA VASCO
+
 -   BLOQUE NACIONALISTA GALLEGO
+
 -   CONVERGÈNCIA I UNIÓ
 
-```{=html}
-<!-- -->
-```
+    ## Ítems obligatorios
+
+7.  Contamos con muchos partidos que se presentan a las elecciones. Solo nos interesarán los siguientes partidos:
+
 -   UNIDAS PODEMOS - IU (atención: aquí han tenido varios nombres - IU, Podem, Ezker Batua, ... - y no siempre se han presentado juntos, pero aquí los analizaremos como un conjunto).
 -   ESQUERRA REPUBLICANA DE CATALUNYA
 -   EH - BILDU (ahora son una coalición de partidos formada por Sortu, Eusko Alkartasuna, Aralar, Alternatiba).
@@ -126,25 +132,30 @@ Además de lo que consideres oportuno realizar, los siguientes elementos son obl
 
 ------------------------------------------------------------------------
 
-```{r}
-#eliminar las columnas de election_data que tienen valores fijos (comprobado con unique):
-election_data <-election_data |>
-  select(-c(tipo_eleccion,codigo_distrito_electoral,vuelta))
+Eliminar las columnas de election_data que tienen valores fijos (comprobado con unique):
 
-election_data<-election_data|> 
+```{r}
+# Quitamos la variable "mes" debido a que sólamente hay una elección por año y ocurre en ese mismo mes por lo que saber el mes no nos interesa.
+election_data <-election_data |>
+  select(-c(tipo_eleccion,codigo_distrito_electoral,vuelta, mes))
+
+election_data <- election_data|> 
   mutate(id_municipio = glue("{codigo_ccaa}-{codigo_provincia}-{codigo_municipio}")) |> 
   relocate(id_municipio, .before = everything())
 
 election_data <- election_data |> 
   select(-c(codigo_ccaa,codigo_provincia,codigo_municipio))
 
-#eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2016
+```
+
+Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2016
+
+```{r}
 surveys <- surveys|> select(-type_survey) |>
   filter(exit_poll==FALSE) |> 
   filter((field_date_to-field_date_from)>0) |> 
   filter(size>=500 & !is.na(size)) |> 
   filter(date_elec>'2016-1-1')
-
 ```
 
 Vamos a pasar el conjunto de datos election_data a forma tidy
