@@ -1,6 +1,6 @@
 ---
 title: "Entrega grupal"
-author: "iratxe , Rosalía (DNI: 00000000-X), ..."
+author: "iratxe , Javier Ruiz."
 format:
   revealjs:
     theme: [style.scss]
@@ -114,3 +114,4 @@ Una vez que tengas los elementos obligatorios de tu base de datos más o menos c
 Recuerda que el objetivo real es demostrar un dominio de las herramientas vistas a lo largo del curso. Y eso no se mide solo por la cantidad de herramientas utilizadas, sino también por la calidad en su ejecución.
 
 ## Deberéis tenerlo todo subido a Github con el enlace generado de manera correcta.
+
