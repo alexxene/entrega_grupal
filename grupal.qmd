@@ -1,6 +1,7 @@
 ---
 title: "Entrega grupal"
-author: "Iratxe Valero (DNI:02724987Q), Ángela García Muñoz (DNI:01840008P), Javier Ruiz."
+author: "Iratxe Valero (DNI:02724987Q), Ángela García Muñoz (DNI:01840008P),
+Javier Ruiz (DNI:25449733A)"
 format:
   revealjs:
     theme: [style.scss]
