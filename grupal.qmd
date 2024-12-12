@@ -4,8 +4,9 @@ author: "Iratxe Valero Ochoa (DNI:02724987Q),
         Ángela García Muñoz (DNI:01840008P),
         Javier Ruiz (DNI:25449733A), 
         Javier Muñoz Zacarés (DNI:55136745H),
-        Xin Yue Huang (NIE:Y8908945R)
-        Alexandra Mihaela Ene (NIE: Y3510242L)"
+        Xin Yue Huang (NIE:Y8908945R),
+        Alexandra Mihaela Ene (NIE: Y3510242L),
+        María Belén Lavanda Rocano (DNI:02723226A) "
 format:
   revealjs:
     theme: [style.scss]
