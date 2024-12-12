@@ -48,6 +48,8 @@ surveys2 <- surveys|> select(-type_survey) |>
   filter((field_date_to-field_date_from)>0) |> 
   filter(size>=500 & !is.na(size)) |> 
   filter(date_elec>'2016-1-1')
+
+# Juntar todos los partidos en una variable llamada "partidos" y sus valores a otra variable llamada "votos"
 ```
 
 ------------------------------------------------------------------------
