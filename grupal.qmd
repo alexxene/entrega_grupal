@@ -10,6 +10,8 @@ execute:
 ---
 
 ```{r}
+#este es un cambio de prueba 
+
 rm(list = ls())
 library(tidyverse)
 library(dplyr)
@@ -17,6 +19,8 @@ library(glue)
 library(forcats)
 library(lubridate)
 ```
+
+
 
 ------------------------------------------------------------------------
 
