@@ -1,6 +1,6 @@
 ---
 title: "Entrega grupal"
-author: "iratxe , Javier Ruiz."
+author: "Iratxe Valero- 02724987Q , Javier Ruiz."
 format:
   revealjs:
     theme: [style.scss]
@@ -10,7 +10,7 @@ execute:
 ---
 
 ```{r}
-#este es un cambio de prueba 
+a 
 
 rm(list = ls())
 library(tidyverse)
