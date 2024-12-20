@@ -145,7 +145,6 @@ election_data <- election_data|>
 
 election_data <- election_data |> 
   select(-c(codigo_ccaa,codigo_provincia,codigo_municipio))
-
 ```
 
 Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2016
@@ -164,6 +163,14 @@ Vamos a pasar el conjunto de datos election_data a forma tidy
 election_data <- 
   election_data |> 
   pivot_longer(cols = "BERDEAK-LOS VERDES":"COALICIÓN POR MELILLA", names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
+
+
+
+# Para saber qué partidos están relacionados con "Unidas Podemos" miramos en la base de datos abbrev.
+abbrev |>
+  mutate("Contar_IU" = str_detect(siglas, "IU|Podem|Ezker Batua")) |> 
+  filter(Contar_IU == TRUE)
+
 ```
 
 ------------------------------------------------------------------------
