@@ -237,3 +237,20 @@ Una vez que tengas los elementos obligatorios de tu base de datos más o menos c
 Recuerda que el objetivo real es demostrar un dominio de las herramientas vistas a lo largo del curso. Y eso no se mide solo por la cantidad de herramientas utilizadas, sino también por la calidad en su ejecución.
 
 ## Deberéis tenerlo todo subido a Github con el enlace generado de manera correcta.
+
+```{r}
+
+# ¿Qué partido fue el ganador en los municipios con más de 100.000 habitantes (censo) en cada una de las elecciones?
+
+ganadores <- election_data |> 
+  filter(censo > 100000) |> 
+  group_by(anno, id_municipio) |> 
+  arrange(desc(votos)) |> 
+  slice(1) |>  
+  summarise(partido_ganador = partidos,  
+    max_votos = votos,       
+    censo_municipio = censo) |> 
+  ungroup()
+
+
+```
