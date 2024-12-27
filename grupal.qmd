@@ -147,30 +147,65 @@ election_data <- election_data |>
   select(-c(codigo_ccaa,codigo_provincia,codigo_municipio))
 ```
 
-Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2016
+Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2008
 
 ```{r}
 surveys <- surveys|> select(-type_survey) |>
   filter(exit_poll==FALSE) |> 
-  filter((field_date_to-field_date_from)>0) |> 
+  filter((field_date_to-field_date_from)> 1) |> 
   filter(size>=500 & !is.na(size)) |> 
-  filter(date_elec>'2016-1-1')
+  filter(date_elec>'2008-1-1')
 ```
 
 Vamos a pasar el conjunto de datos election_data a forma tidy
 
 ```{r}
-election_data <- 
-  election_data |> 
-  pivot_longer(cols = "BERDEAK-LOS VERDES":"COALICIÓN POR MELILLA", names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
+election_data <-  election_data |> pivot_longer(cols = "BERDEAK-LOS VERDES":"COALICIÓN POR MELILLA", 
+names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
+```
 
+```{r}
 
+#Primero tenemos que filtrar el dataset abbrev ya que hay partidos que aceptan múltiples siglas 
 
-# Para saber qué partidos están relacionados con "Unidas Podemos" miramos en la base de datos abbrev.
-abbrev |>
-  mutate("Contar_IU" = str_detect(siglas, "IU|Podem|Ezker Batua")) |> 
-  filter(Contar_IU == TRUE)
+  abbrev_sinrepes <- abbrev |> group_by(denominacion) |> slice(1)
 
+# Ahora juntamos el dataset election_data con abbrev_sinrepes para darle a cada partido su correspondiente abreviatura
+  resumen <- election_data |> left_join(abbrev_sinrepes,by = c('partidos' = 'denominacion'))
+  
+ # Supongamos que tu tabla se llama "mi_tabla"
+ write.csv(resumen, "resumen.csv", row.names = FALSE)
+ 
+ elecciones <- resumen |> 
+   mutate(siglas = case_when(
+     str_detect(siglas, regex("aralar|^EA$|AMAIUR|EH Bildu", ignore_case = TRUE)) ~ 'EH-BILDU',
+     str_detect(siglas, regex("IU|EB-B|ENTESA|PODEMOS|EZKERRA|UP-UPeC|I\\.U\\.", ignore_case = TRUE)) ~ 'UP',
+     str_detect(siglas, regex("^PP$|P\\.P-E\\.U\\.|PP-PAR|PP-FORO|PP-UPM", ignore_case = TRUE)) ~ 'PP',
+     str_detect(siglas, regex("PNV|BAI|Na-Bai", ignore_case = TRUE)) ~ 'PNV',
+     str_detect(siglas, regex("PSOE|PSC|PSPC|PSE", ignore_case = TRUE)) ~ 'PSOE',
+     str_detect(siglas, regex("PAÍS|MÉS COMPROM", ignore_case = TRUE)) ~ 'MP',
+     str_detect(siglas, regex("VOX", ignore_case = TRUE)) ~ 'VOX',
+     str_detect(siglas, regex("C's", ignore_case = TRUE)) ~ 'Cs',
+     str_detect(siglas, regex("CiU|CDC|unio.cat", ignore_case = TRUE)) ~ 'CIU',
+     str_detect(siglas, regex("ERC", ignore_case = TRUE)) ~ 'ERC',
+     str_detect(siglas, regex("BNG|NÓS", ignore_case = TRUE)) ~ 'BNG',
+    # Partidos que no aparecen en abbrev que tenemos que incluir'
+     str_detect(partidos, regex("PARTIT POPULAR|PARTIDO POPULAR|\\(PP\\)", ignore_case = TRUE)) ~ 'PP',
+     str_detect(partidos, regex("CIUTADANS|PARTIDO DE LA CIU", ignore_case = TRUE)) ~ 'Cs',
+     str_detect(partidos, regex("CONVERGÈNCIA i UNIÓ|CONVERGÈNCIA I UNIÓ", ignore_case = TRUE)) ~ 'CIU',
+     str_detect(partidos, regex("IZQUIERDA UNIDA|EZKER ANITZA|ESQUERRA UNIDA|^IU$|PODEMOS|AHAL DUGU|ESQUERDA UNIDA-OS VERDES", ignore_case = TRUE)) ~ 'UP',
+     str_detect(partidos, regex("PSOE|SOCIALISTA OBRER ESPANYOL|DOS SOCIALISTAS", ignore_case = TRUE)) ~ 'PSOE',
+     str_detect(partidos, regex("(EH Bildu)|PARTIDO POLITICO ARALAR", ignore_case = TRUE)) ~ 'EH-BILDU',
+     str_detect(partidos, regex("ESQUERRA REPUBLICANA/CATALUNYA SÍ|ESQUERRA REPUBLICANA$", ignore_case = TRUE)) ~ 'ERC',   
+     TRUE ~ 'OTRO'   ))
+ 
+ #partidos con OTRO
+# prueba <- elecciones |> filter(siglas == 'OTRO') |> arrange(partidos)
+# unique(prueba$partidos)
+ 
+ #partidos incluidos 
+ # prueba <- elecciones|> filter(siglas != 'OTRO') |> arrange(partidos)
+ #unique(prueba$partidos)
 ```
 
 ------------------------------------------------------------------------
