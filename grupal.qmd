@@ -187,6 +187,7 @@ resumen <- election_data |> mutate('siglas' = case_when(
 
 
 (unique(resumen$siglas))
+
 ```
 
 ------------------------------------------------------------------------
