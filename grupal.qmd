@@ -147,14 +147,14 @@ election_data <- election_data |>
   select(-c(codigo_ccaa,codigo_provincia,codigo_municipio))
 ```
 
-Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2016
+Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2008
 
 ```{r}
 surveys <- surveys|> select(-type_survey) |>
   filter(exit_poll==FALSE) |> 
   filter((field_date_to-field_date_from)>0) |> 
   filter(size>=500 & !is.na(size)) |> 
-  filter(date_elec>'2016-1-1')
+  filter(date_elec>'2008-1-1')
 ```
 
 Vamos a pasar el conjunto de datos election_data a forma tidy
@@ -165,17 +165,35 @@ election_data <-
   pivot_longer(cols = "BERDEAK-LOS VERDES":"COALICIÓN POR MELILLA", names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
 
 
+```
 
-# Para saber qué partidos están relacionados con "Unidas Podemos" miramos en la base de datos abbrev.
-abbrev |>
-  mutate("Contar_IU" = str_detect(siglas, "IU|Podem|Ezker Batua")) |> 
-  filter(Contar_IU == TRUE)
+Utilizamos la variable partidos para agrupar todos ellos en solo 12: "PP" "UP" "PSOE" "PNV" "Cs" "ERC" "CIU" "MP" "VOX" "BNG" "EH-BILDU" "OTROS"
 
+```{r}
+resumen <- election_data |> mutate('siglas' = case_when(
+  str_detect(partidos, "EZKER BA|ENTESA|PODEM|IZQUIERDA UNIDA|ESQUERRA UNI|ESQUERDA UNI") ~ "UP",
+  str_detect(partidos, "PP|PARTIDO POPULAR|PARTIT POPULAR") ~ "PP",
+  str_detect(partidos, "PNV|PARTIDO NACIONALISTA VASCO") ~ "PNV",
+  str_detect(partidos, "PSOE|PSC|PARTIDO SOCIALISTA|PARTIT SOCIALISTA") ~ "PSOE",
+  str_detect(partidos, "PAÍS|COMPROMÍS") ~ "MP",
+  str_detect(partidos, "VOX") ~ "VOX",
+  str_detect(partidos, "ARALAR|EUSKO|EUSKAL HERRI|BILDU") ~ "EH-BILDU",
+  str_detect(partidos, "ERC|ESQUERRA REPU") ~ "ERC",
+  str_detect(partidos, "BNG|BLOQUE") ~ "BNG",
+  str_detect(partidos, "CIUTADANS|PARTIDO DE LA CIU") ~ "Cs",
+  str_detect(partidos, "CONVERGENCIA I UNIÓ|CONVERGÈNCIA I UNIÓ|CONVERGENTS") ~ "CIU", 
+  TRUE ~ "OTROS"
+))
+
+
+(unique(resumen$siglas))
 ```
 
 ------------------------------------------------------------------------
 
-Convertimos a tidy:
+```{r}
+
+```
 
 ## Ítems obligatorios
 
