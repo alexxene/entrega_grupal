@@ -32,6 +32,7 @@ election_data <- read_csv(file = "./data/datos_elecciones_brutos.csv")
 cod_mun <- read_csv(file = "./data/cod_mun.csv")
 surveys <- read_csv(file = "./data/historical_surveys.csv")
 abbrev <- read_csv(file = "./data/siglas.csv")
+
 ```
 
 ------------------------------------------------------------------------
@@ -152,7 +153,7 @@ Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2
 ```{r}
 surveys <- surveys|> select(-type_survey) |>
   filter(exit_poll==FALSE) |> 
-  filter((field_date_to-field_date_from)>0) |> 
+  filter((field_date_to-field_date_from)>1) |> #he puesto que sean mayores que uno ya que en el punto 11 pone que tengan mas de un día y si ponemos 0 incluye los que tienen 1 dia de trabajo de campo
   filter(size>=500 & !is.na(size)) |> 
   filter(date_elec>'2016-1-1')
 ```
@@ -165,17 +166,52 @@ election_data <-
   pivot_longer(cols = "BERDEAK-LOS VERDES":"COALICIÓN POR MELILLA", names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
 
 
-
 # Para saber qué partidos están relacionados con "Unidas Podemos" miramos en la base de datos abbrev.
 abbrev |>
   mutate("Contar_IU" = str_detect(siglas, "IU|Podem|Ezker Batua")) |> 
   filter(Contar_IU == TRUE)
+
 
 ```
 
 ------------------------------------------------------------------------
 
 Convertimos a tidy:
+
+```{r}
+abbrev_sinrepes <- abbrev |> group_by(denominacion) |> slice(1)
+
+resumen <- election_data |> left_join(abbrev_sinrepes,by = c('partidos' = 'denominacion'))
+# Supongamos que tu tabla se llama "mi_tabla"
+write.csv(resumen, "resumen.csv", row.names = FALSE)
+
+
+resumen2 <- resumen |> 
+  mutate(siglas = case_when(
+    # Agrupación de partidos bajo las reglas predefinidas
+    str_detect(siglas, regex("IU|EU|EB-B|ENTESA|PODEMOS|EZKERRA|UP-UPeC|I\\.U\\.", ignore_case = TRUE)) ~ 'UP',
+    str_detect(siglas, regex("^PP$|P\\.P-E\\.U\\.|PP-PAR|PP-FORO|PP-UPM", ignore_case = TRUE)) ~ 'PP',
+    str_detect(siglas, regex("PNV|BAI|Na-Bai", ignore_case = TRUE)) ~ 'PNV',
+    str_detect(siglas, regex("PSOE|PSC|PSPC|PSE", ignore_case = TRUE)) ~ 'PSOE',
+    str_detect(siglas, regex("PAÍS|MÉS COMPROM", ignore_case = TRUE)) ~ 'MP',
+    str_detect(siglas, regex("VOX", ignore_case = TRUE)) ~ 'VOX',
+    str_detect(siglas, regex("C's", ignore_case = TRUE)) ~ 'Cs',
+    str_detect(siglas, regex("aralar|^EA$|AMAIUR|EH", ignore_case = TRUE)) ~ 'EH-BILDU',
+    str_detect(siglas, regex("CiU", ignore_case = TRUE)) ~ 'CIU',
+    str_detect(siglas, regex("ERC", ignore_case = TRUE)) ~ 'ERC',
+    str_detect(siglas, regex("BNG", ignore_case = TRUE)) ~ 'BNG',
+    # Verificación adicional en 'partidos'
+    str_detect(partidos, regex("PARTIT POPULAR|\\(PP\\)", ignore_case = TRUE)) ~ 'PP',
+    str_detect(partidos, regex("CIUTADANS|PARTIDO DE LA CIU", ignore_case = TRUE)) ~ 'Cs',
+    str_detect(partidos, regex("CONVERGÈNCIA i UNIÓ|CONVERGÈNCIA I UNIÓ", ignore_case = TRUE)) ~ 'CIU',
+    str_detect(partidos, regex("IZQUIERDA UNIDA", ignore_case = TRUE)) ~ 'UP',
+    # Asignar 'OTRO' si no cumple ninguna regla
+    TRUE ~ 'OTRO'
+  ))
+#con este codigo conseguimos que se agrupen los partidos pero si veis los resultados hay algunos que no lo han hecho y eso es porque en la tabla, tienen el valor de siglas como NA si sabeis como podemos arreglarlo hacedlo porque ya no se que hacer
+prueba <- resumen2 |> filter(siglas == 'OTRO')
+unique(prueba$partidos)
+```
 
 ## Ítems obligatorios
 
