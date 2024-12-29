@@ -176,7 +176,7 @@ names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
  # Supongamos que tu tabla se llama "mi_tabla"
  write.csv(resumen, "resumen.csv", row.names = FALSE)
  
- elecciones <- resumen |> 
+ resumen2 <- resumen |> 
    mutate(siglas = case_when(
      str_detect(siglas, regex("aralar|^EA$|AMAIUR|EH Bildu", ignore_case = TRUE)) ~ 'EH-BILDU',
      str_detect(siglas, regex("IU|EB-B|ENTESA|PODEMOS|EZKERRA|UP-UPeC|I\\.U\\.", ignore_case = TRUE)) ~ 'UP',
@@ -199,13 +199,15 @@ names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
      str_detect(partidos, regex("ESQUERRA REPUBLICANA/CATALUNYA SÍ|ESQUERRA REPUBLICANA$", ignore_case = TRUE)) ~ 'ERC',   
      TRUE ~ 'OTRO'   ))
  
+ 
+  
  #partidos con OTRO
-# prueba <- elecciones |> filter(siglas == 'OTRO') |> arrange(partidos)
-# unique(prueba$partidos)
+ prueba <- resumen2 |> filter(siglas != 'OTRO') |> arrange(partidos)
+ unique(prueba$partidos)
  
  #partidos incluidos 
- # prueba <- elecciones|> filter(siglas != 'OTRO') |> arrange(partidos)
- #unique(prueba$partidos)
+  prueba <- resumen2|> filter(siglas != 'OTRO') |> arrange(partidos)
+ unique(prueba$partidos)
 ```
 
 ------------------------------------------------------------------------
