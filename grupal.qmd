@@ -29,6 +29,7 @@ library(extrafont)
 
 ------------------------------------------------------------------------
 
+
 ## Datos
 
 -   `election_data`: archivo con las elecciones al congreso
@@ -48,8 +49,6 @@ abbrev <- read_csv(file = "./data/siglas.csv")
 
 ## Limpieza de datos
 
-Eliminar las columnas de election_data que tienen valores fijos (comprobado con unique):
-
 ```{r}
 # Quitamos la variable "mes" debido a que sólamente hay una elección por año y ocurre en ese mismo mes por lo que saber el mes no nos interesa.
 election_data <-
@@ -59,11 +58,9 @@ election_data <-
             vuelta, 
             mes))
 
-election_data <- 
-  election_data|> 
-  mutate(id_municipio = glue("{codigo_ccaa}-{codigo_provincia}-{codigo_municipio}")) |> 
-  relocate(id_municipio, 
-           .before = everything())
+election_data <- election_data|> 
+  mutate(id_municipio = glue("{codigo_provincia}{codigo_municipio}")) |> 
+  relocate(id_municipio, .before=codigo_ccaa)
 
 election_data <- 
   election_data |> 
@@ -72,7 +69,7 @@ election_data <-
             codigo_municipio))
 ```
 
-Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2016
+Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2008
 
 ```{r}
 surveys <- 
@@ -81,16 +78,18 @@ surveys <-
   filter(exit_poll == FALSE) |> 
   filter((field_date_to-field_date_from) > 1) |> 
   filter(size>=500 & !is.na(size)) |> 
-  filter(date_elec>'2016-1-1')
+  filter(date_elec>'2008-1-1')
 ```
 
-Vamos a pasar el conjunto de datos election_data a forma tidy
 
 ```{r}
 election_data <- 
   election_data |> 
   pivot_longer(cols = "BERDEAK-LOS VERDES":"COALICIÓN POR MELILLA", names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
 ```
+
+
+------------------------------------------------------------------------
 
 Utilizamos la variable partidos para agrupar todos ellos en solo 12: "PP" "UP" "PSOE" "PNV" "Cs" "ERC" "CIU" "MP" "VOX" "BNG" "EH-BILDU" "OTROS"
 
@@ -316,5 +315,48 @@ determinados partidos ganan en las zonas rurales?
 ### Pregunta_9
 
 ```{r}
+
+```
+
+=======
+
+Añadimos gráfico de España con municipios de más de 100k habitantes
+
+coloreados por los partidos que ganaron las elecciones en cada uno de los años electorales
+
+```{r}
+
+install.packages("mapSpain")
+library(mapSpain)
+mapa_mas100k_ganadores<-
+mapSpain::esp_get_munic() |> 
+    left_join(ganadores, by=c("LAU_CODE"="id_municipio")) |> 
+    filter(anno=="2016")
+
+ggplot(mapa_mas100k_ganadores)+
+  geom_sf(aes(fill=partido_ganador),alpha=0.7, color="grey")+
+  scale_fill_manual(
+    #escogemos los colores correspondientes a los logos de cada partido
+    values=c("PP"="#1A4CA0",
+              "UP"="#542C85",
+              "PSOE"="#D50000",
+              "PNV"="#018B3F",
+              "Cs"="#EB6109",
+              "ERC"="#FFCD00",
+              "CIU"="#1E3A5F",
+              "MP"="#5A9A6E",
+              "VOX"="#1D7A2A",
+              "BNG"="#007A33",
+              "EH-BILDU"="#4C9A2A",
+              "OTROS"="pink",
+              "NA"="gray"),
+              na.value = "gray" )+
+  theme_minimal()+
+  labs(fill="partido_ganador",
+       title="Partidos ganadores en municipios de más de cien mil habitantes")+
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom")
+#+
+  #facet_wrap(~ anno)
 
 ```
