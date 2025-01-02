@@ -238,6 +238,8 @@ Recuerda que el objetivo real es demostrar un dominio de las herramientas vistas
 
 ## Deberéis tenerlo todo subido a Github con el enlace generado de manera correcta.
 
+### Pregunta_1
+
 ```{r}
 
 # ¿Qué partido fue el ganador en los municipios con más de 100.000 habitantes (censo) en cada una de las elecciones?
@@ -253,4 +255,85 @@ ganadores <- election_data |>
   ungroup()
 
 
+```
+
+### Pregunta_2
+
+```{r}
+# ¿Qué partido fue el segundo cuando el primero fue el PSOE? ¿Y cuando el primero fue el PP?
+segundos <- 
+  resumen |> 
+  group_by(anno, siglas) |> 
+  summarise(total_votos = sum(votos), .groups = "drop") |>  
+  group_by(anno) |> 
+  slice_max(total_votos, n = 5) |> 
+  arrange(anno, desc(total_votos)) |>
+  ungroup()
+
+```
+
+```{r}
+# manera 1
+
+primeros_segundos <- 
+  segundos |> 
+  group_by(anno) |> 
+  mutate(rank = row_number()) |>  # Clasificar partidos por votos en cada año
+  filter(rank <= 2) |>  # Filtrar los dos partidos principales de cada año
+  summarise(
+    primero = siglas[rank == 1], # partido en primer lugar
+    votos_1 = total_votos[rank == 1], # Número de votos del primer lugar
+    segundo = siglas[rank == 2],  # partido en segundo lugar
+    votos_2 = total_votos[rank == 2]  # Número de votos del segundo lugar
+  ) |> 
+  ungroup()
+primeros_segundos
+
+# Filtrar cuando el primer lugar es PSOE
+segundo_cuando_psoe <- 
+  primeros_segundos |> 
+  filter(primero == "PSOE")
+segundo_cuando_psoe
+
+# Filtrar cuando el primer lugar es PP
+segundo_cuando_pp <- 
+  primeros_segundos |> 
+  filter(primero == "PP")
+segundo_cuando_pp
+
+```
+
+```{r}
+# manera 2
+
+library(extrafont)
+
+ggplot(segundos, 
+       aes(x = siglas, 
+           y = total_votos, 
+           fill = siglas)) +
+  geom_col(alpha = 0.8, 
+           width = 0.7) +
+  scale_fill_manual(values = c(
+    "PP" = "#1e4b8f",
+    "PSOE" = "#e30613",
+    "OTROS" = "grey",
+    "UP" = "#782c67",
+    "PNV" = "#008135",
+    "CIU" = "blue",
+    "Cs" = "#ff6a2d",
+    "VOX" = "#77b82a"))  +
+  labs(title = "Los cinco partidos principales en votos por año",
+       subtitle = "Elecciones después de 2008",
+       x = "Año y partido",
+       y = "Número de votos",
+       fill = "Partido") +
+  theme_minimal(base_family = "Rockwell") +
+  theme(axis.text.x = element_text(angle = 45),
+        axis.title.x = element_blank(),
+        legend.position = "bottom") +
+  facet_wrap(~anno, nrow = 1, scales = "free_x")
+
+# PP fue el segundo cuando el primero fue el PSOE
+# PSOE o UP fueron el segundo cuando el primero fue el PP
 ```
