@@ -15,6 +15,8 @@ execute:
   echo: true
 ---
 
+## Paquetes necesarios
+
 ```{r}
 rm(list = ls())
 library(tidyverse)
@@ -22,9 +24,18 @@ library(dplyr)
 library(glue)
 library(forcats)
 library(lubridate)
+library(extrafont)
 ```
 
 ------------------------------------------------------------------------
+
+
+## Datos
+
+-   `election_data`: archivo con las elecciones al congreso
+-   `cod_mun`: archivo con los códigos y nombres de cada municipio
+-   `abbrev`: siglas de cada partido
+-   `surveys`: encuestas electorales desde 1982.
 
 ```{r}
 # NO TOQUES NADA
@@ -36,32 +47,36 @@ abbrev <- read_csv(file = "./data/siglas.csv")
 
 ------------------------------------------------------------------------
 
-<<<<<<< Updated upstream
-## 
-
-=======
->>>>>>> Stashed changes
-Eliminar las columnas de election_data que tienen valores fijos (comprobado con unique):
+## Limpieza de datos
 
 ```{r}
 # Quitamos la variable "mes" debido a que sólamente hay una elección por año y ocurre en ese mismo mes por lo que saber el mes no nos interesa.
-election_data <-election_data |>
-  select(-c(tipo_eleccion,codigo_distrito_electoral,vuelta, mes))
+election_data <-
+  election_data |>
+  select(-c(tipo_eleccion,
+            codigo_distrito_electoral,
+            vuelta, 
+            mes))
 
 election_data <- election_data|> 
   mutate(id_municipio = glue("{codigo_provincia}{codigo_municipio}")) |> 
   relocate(id_municipio, .before=codigo_ccaa)
 
-election_data <- election_data |> 
-  select(-c(codigo_ccaa,codigo_provincia,codigo_municipio))
+election_data <- 
+  election_data |> 
+  select(-c(codigo_ccaa,
+            codigo_provincia,
+            codigo_municipio))
 ```
 
-Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2016
+Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2008
 
 ```{r}
-surveys <- surveys|> select(-type_survey) |>
-  filter(exit_poll==FALSE) |> 
-  filter((field_date_to-field_date_from)>0) |> 
+surveys <- 
+  surveys|> 
+  select(-type_survey) |>
+  filter(exit_poll == FALSE) |> 
+  filter((field_date_to-field_date_from) > 1) |> 
   filter(size>=500 & !is.na(size)) |> 
   filter(date_elec>'2008-1-1')
 ```
@@ -71,15 +86,19 @@ surveys <- surveys|> select(-type_survey) |>
 election_data <- 
   election_data |> 
   pivot_longer(cols = "BERDEAK-LOS VERDES":"COALICIÓN POR MELILLA", names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
-
 ```
+
 
 ------------------------------------------------------------------------
 
 Utilizamos la variable partidos para agrupar todos ellos en solo 12: "PP" "UP" "PSOE" "PNV" "Cs" "ERC" "CIU" "MP" "VOX" "BNG" "EH-BILDU" "OTROS"
 
 ```{r}
-resumen <- election_data |> mutate('siglas' = case_when(
+# manera 1
+
+resumen <- 
+  election_data |> 
+  mutate('siglas' = case_when(
   str_detect(partidos, "EZKER BA|ENTESA|PODEM|IZQUIERDA UNIDA|ESQUERRA UNI|ESQUERDA UNI") ~ "UP",
   str_detect(partidos, "PP|PARTIDO POPULAR|PARTIT POPULAR") ~ "PP",
   str_detect(partidos, "PNV|PARTIDO NACIONALISTA VASCO") ~ "PNV",
@@ -93,29 +112,214 @@ resumen <- election_data |> mutate('siglas' = case_when(
   str_detect(partidos, "CONVERGENCIA I UNIÓ|CONVERGÈNCIA I UNIÓ|CONVERGENTS") ~ "CIU", 
   TRUE ~ "OTROS"
 ))
-(unique(resumen$siglas))
+
+resumen
+unique(resumen$siglas)
 ```
 
-<<<<<<< Updated upstream
 ```{r}
+# manera 2
 
-# ¿Qué partido fue el ganador en los municipios con más de 100.000 habitantes (censo) en cada una de las elecciones?
+#Primero tenemos que filtrar el dataset abbrev ya que hay partidos que aceptan múltiples siglas 
+abbrev_sinrepes <- 
+  abbrev |> 
+  group_by(denominacion) |> 
+  slice(1)
 
-ganadores <- resumen |> 
+# Ahora juntamos el dataset election_data con abbrev_sinrepes para darle a cada partido su correspondiente abreviatura
+resumen_2 <- 
+    election_data |> 
+    left_join(abbrev_sinrepes,
+              by = c('partidos' = 'denominacion'))
+  
+resumen_2 <- 
+  resumen_2 |> 
+   mutate(siglas = case_when(
+     str_detect(siglas, regex("aralar|^EA$|AMAIUR|EH Bildu", ignore_case = TRUE)) ~ 'EH-BILDU',
+     str_detect(siglas, regex("IU|EB-B|ENTESA|PODEMOS|EZKERRA|UP-UPeC|I\\.U\\.", ignore_case = TRUE)) ~ 'UP',
+     str_detect(siglas, regex("^PP$|P\\.P-E\\.U\\.|PP-PAR|PP-FORO|PP-UPM", ignore_case = TRUE)) ~ 'PP',
+     str_detect(siglas, regex("PNV|BAI|Na-Bai", ignore_case = TRUE)) ~ 'PNV',
+     str_detect(siglas, regex("PSOE|PSC|PSPC|PSE", ignore_case = TRUE)) ~ 'PSOE',
+     str_detect(siglas, regex("PAÍS|MÉS COMPROM", ignore_case = TRUE)) ~ 'MP',
+     str_detect(siglas, regex("VOX", ignore_case = TRUE)) ~ 'VOX',
+     str_detect(siglas, regex("C's", ignore_case = TRUE)) ~ 'Cs',
+     str_detect(siglas, regex("CiU|CDC|unio.cat", ignore_case = TRUE)) ~ 'CIU',
+     str_detect(siglas, regex("ERC", ignore_case = TRUE)) ~ 'ERC',
+     str_detect(siglas, regex("BNG|NÓS", ignore_case = TRUE)) ~ 'BNG',
+    # Partidos que no aparecen en abbrev que tenemos que incluir'
+     str_detect(partidos, regex("PARTIT POPULAR|PARTIDO POPULAR|\\(PP\\)", ignore_case = TRUE)) ~ 'PP',
+     str_detect(partidos, regex("CIUTADANS|PARTIDO DE LA CIU", ignore_case = TRUE)) ~ 'Cs',
+     str_detect(partidos, regex("CONVERGÈNCIA i UNIÓ|CONVERGÈNCIA I UNIÓ", ignore_case = TRUE)) ~ 'CIU',
+     str_detect(partidos, regex("IZQUIERDA UNIDA|EZKER ANITZA|ESQUERRA UNIDA|^IU$|PODEMOS|AHAL DUGU|ESQUERDA UNIDA-OS VERDES", ignore_case = TRUE)) ~ 'UP',
+     str_detect(partidos, regex("PSOE|SOCIALISTA OBRER ESPANYOL|DOS SOCIALISTAS", ignore_case = TRUE)) ~ 'PSOE',
+     str_detect(partidos, regex("(EH Bildu)|PARTIDO POLITICO ARALAR", ignore_case = TRUE)) ~ 'EH-BILDU',
+     str_detect(partidos, regex("ESQUERRA REPUBLICANA/CATALUNYA SÍ|ESQUERRA REPUBLICANA$", ignore_case = TRUE)) ~ 'ERC',   
+     TRUE ~ 'OTRO'))
+ 
+#partidos con OTRO
+#prueba <- resumen_2 |> filter(siglas != 'OTRO') |> arrange(partidos)
+#unique(prueba$partidos)
+ 
+#partidos incluidos 
+#prueba <- resumen_2|> filter(siglas != 'OTRO') |> arrange(partidos)
+#unique(prueba$partidos)
+```
+
+------------------------------------------------------------------------
+
+### Pregunta_1
+
+¿Qué partido fue el ganador en los municipios con más de 100.000 habitantes (censo) en cada una de las elecciones?
+
+```{r}
+ganadores <- 
+  election_data |> 
   filter(censo > 100000) |> 
   group_by(anno, id_municipio) |> 
   arrange(desc(votos)) |> 
   slice(1) |>  
-  summarise(partido_ganador = siglas,  
-    max_votos = votos,       
-    censo_municipio = censo) |> 
+  summarise(partido_ganador = partidos,
+            max_votos = votos,
+            censo_municipio = censo) |> 
   ungroup()
 
+ganadores
+```
+
+### Pregunta_2
+
+¿Qué partido fue el segundo cuando el primero fue el PSOE? ¿Y cuando el primero fue el PP?
+
+```{r}
+segundos <- 
+  resumen |> 
+  group_by(anno, siglas) |> 
+  summarise(total_votos = sum(votos), .groups = "drop") |>  
+  group_by(anno) |> 
+  slice_max(total_votos, n = 5) |> 
+  arrange(anno, desc(total_votos)) |>
+  ungroup()
+
+segundos
+```
+
+```{r}
+# manera 1
+
+primeros_segundos <- 
+  segundos |> 
+  group_by(anno) |> 
+  mutate(rank = row_number()) |>  # Clasificar partidos por votos en cada año
+  filter(rank <= 2) |>  # Filtrar los dos partidos principales de cada año
+  summarise(
+    primero = siglas[rank == 1], # partido en primer lugar
+    votos_1 = total_votos[rank == 1], # Número de votos del primer lugar
+    segundo = siglas[rank == 2],  # partido en segundo lugar
+    votos_2 = total_votos[rank == 2]  # Número de votos del segundo lugar
+  ) |> 
+  ungroup()
+primeros_segundos
+
+# Filtrar cuando el primer lugar es PSOE
+segundo_cuando_psoe <- 
+  primeros_segundos |> 
+  filter(primero == "PSOE")
+segundo_cuando_psoe
+
+# Filtrar cuando el primer lugar es PP
+segundo_cuando_pp <- 
+  primeros_segundos |> 
+  filter(primero == "PP")
+segundo_cuando_pp
+
+```
+
+```{r}
+# manera 2
+
+ggplot(segundos, 
+       aes(x = siglas, 
+           y = total_votos, 
+           fill = siglas)) +
+  geom_col(alpha = 0.8, 
+           width = 0.7) +
+  scale_fill_manual(values = c(
+    "PP" = "#1e4b8f",
+    "PSOE" = "#e30613",
+    "OTROS" = "grey",
+    "UP" = "#782c67",
+    "PNV" = "#008135",
+    "CIU" = "blue",
+    "Cs" = "#ff6a2d",
+    "VOX" = "#77b82a"))  +
+  labs(title = "Los cinco partidos principales en votos por año",
+       subtitle = "Elecciones después de 2008",
+       x = "Año y partido",
+       y = "Número de votos",
+       fill = "Partido") +
+  theme_minimal(base_family = "Rockwell") +
+  theme(axis.text.x = element_text(angle = 45),
+        axis.title.x = element_blank(),
+        legend.position = "bottom") +
+  facet_wrap(~anno, nrow = 1, scales = "free_x")
+
+# PP fue el segundo cuando el primero fue el PSOE
+# PSOE o UP fueron el segundo cuando el primero fue el PP
+```
+
+### Pregunta_3
+
+¿A quién beneficia la baja participación?
+
+```{r}
+
+```
+
+### Pregunta_4
+
+¿Cómo analizar la relación entre censo y voto? ¿Es cierto que
+determinados partidos ganan en las zonas rurales?
+
+```{r}
+
+```
+
+### Pregunta_5
+
+¿Cómo calibrar el error de las encuestas (recordemos que las encuestas son de intención de voto a nivel nacional)?
+
+```{r}
+
+```
+
+### Pregunta_6
+
+¿Qué casas encuestadoras acertaron más y cuáles se desviaron más de los resultados?
+
+```{r}
+
+```
+
+### Pregunta_7
+
+```{r}
+
+```
+
+### Pregunta_8
+
+```{r}
+
+```
+
+### Pregunta_9
+
+```{r}
 
 ```
 
 =======
->>>>>>> Stashed changes
+
 Añadimos gráfico de España con municipios de más de 100k habitantes
 
 coloreados por los partidos que ganaron las elecciones en cada uno de los años electorales
