@@ -15,6 +15,8 @@ execute:
   echo: true
 ---
 
+## Paquetes necesarios
+
 ```{r}
 rm(list = ls())
 library(tidyverse)
@@ -22,16 +24,7 @@ library(dplyr)
 library(glue)
 library(forcats)
 library(lubridate)
-```
-
-------------------------------------------------------------------------
-
-```{r}
-# NO TOQUES NADA
-election_data <- read_csv(file = "./data/datos_elecciones_brutos.csv")
-cod_mun <- read_csv(file = "./data/cod_mun.csv")
-surveys <- read_csv(file = "./data/historical_surveys.csv")
-abbrev <- read_csv(file = "./data/siglas.csv")
+library(extrafont)
 ```
 
 ------------------------------------------------------------------------
@@ -43,116 +36,50 @@ abbrev <- read_csv(file = "./data/siglas.csv")
 -   `abbrev`: siglas de cada partido
 -   `surveys`: encuestas electorales desde 1982.
 
-------------------------------------------------------------------------
-
-## Datos
-
--   `surveys`: encuestas electorales desde 1982.
-    -   `type_survey`: tipo de encuesta (nacional, regional...)
-    -   `date_elec`: fecha de las futuras elecciones
-    -   `id_pollster`, `pollster`, `media`: id y nombre de la empresa encuestadora, así como medio que la encargó
-    -   `field_date_from`, `field_date_to`: fechas de inicio y fin del trabajo de la encuesta
-    -   `exit_poll`: ¿es una encuesta a pie de urna?
-    -   `size`: tamaño muestral de la encuesta
-    -   `turnout`: participación (estimación)
+```{r}
+# NO TOQUES NADA
+election_data <- read_csv(file = "./data/datos_elecciones_brutos.csv")
+cod_mun <- read_csv(file = "./data/cod_mun.csv")
+surveys <- read_csv(file = "./data/historical_surveys.csv")
+abbrev <- read_csv(file = "./data/siglas.csv")
+```
 
 ------------------------------------------------------------------------
 
-## Objetivos
-
-El objetivo de la entrega es [**realizar un análisis de los datos electorales**]{.hl-green}, llevando a cabo la depuración, los resúmenes y los gráficos que consideres necesarios, tanto de los resultados como de la precisión de las encuestas electorales.
-
-En concreto, debes trabajar únicamente en el **período de tiempo que incluye las elecciones desde 2008 hasta las últimas elecciones de 2019**
-
-------------------------------------------------------------------------
-
-## Algunos comentarios
-
-Además de lo que consideres oportuno realizar, los siguientes elementos son obligatorios:
-
--   Cada grupo debe presentar [**antes del 17 de enero (23:59)**]{.hl-red} un análisis de los datos en formato .qmd y .html, en modo Quarto slides, que serán los que presentarán el día de la exposición.
-
--   Las Quarto slides deben subirse a Github (un miembro de cada grupo deberá proporcionar el enlace).
-
--   El número máximo de diapositivas será de 45. El tiempo máximo para cada grupo será de 22 minutos (+5-10 minutos para preguntas).
-
-------------------------------------------------------------------------
-
-## Algunos comentarios
-
--   Durante la presentación, deberéis explicar (de manera resumida) el análisis realizado, asegurándoos de que cada miembro del equipo hable durante un tiempo similar y que cualquier miembro pueda responder preguntas sobre cualquiera de los pasos realizados. La nota no será la misma para todos los integrantes.
-
--   Se valorará no solo el contenido, sino también la presentación (estética).
-
--   El objetivo es demostrar que se ha adquirido el máximo conocimiento del curso
-
-------------------------------------------------------------------------
-
-## Ítems obligatorios
-
-1.  Los datos deben ser convertidos a tidydata donde sea apropiado.
-
-2.  Debes incluir al menos un join entre tablas.
-
-3.  Recordatorio: información = varianza
-
-4.  Los paquetes `{glue}`, `{forcats}` y `{lubridate}` deben ser utilizados en algún punto
-
-5.  Los siguientes elementos deben usarse al menos una vez: mutate, summarise, group_by (o su equivalente), case_when
-
-6.  Deberéis definir al menos una función (con más de 5 líneas de código)
-
-------------------------------------------------------------------------
-
-## Ítems obligatorios
-
-7.  Contamos con muchos partidos que se presentan a las elecciones. Solo nos interesarán los siguientes partidos:
-
--   PARTIDO SOCIALISTA OBRERO ESPAÑOL (cuidado: tiene/tenía federaciones - sucursales - con otros nombres).
-
--   PARTIDO POPULAR
-
--   CIUDADANOS (cuidado: tiene/tenía federaciones - sucursales - con otros nombres).
-
--   PARTIDO NACIONALISTA VASCO
-
--   BLOQUE NACIONALISTA GALLEGO
-
--   CONVERGÈNCIA I UNIÓ
-
-    ## Ítems obligatorios
-
-7.  Contamos con muchos partidos que se presentan a las elecciones. Solo nos interesarán los siguientes partidos:
-
--   UNIDAS PODEMOS - IU (atención: aquí han tenido varios nombres - IU, Podem, Ezker Batua, ... - y no siempre se han presentado juntos, pero aquí los analizaremos como un conjunto).
--   ESQUERRA REPUBLICANA DE CATALUNYA
--   EH - BILDU (ahora son una coalición de partidos formada por Sortu, Eusko Alkartasuna, Aralar, Alternatiba).
--   MÁS PAÍS
--   VOX
-
-------------------------------------------------------------------------
+## Limpieza de datos
 
 Eliminar las columnas de election_data que tienen valores fijos (comprobado con unique):
 
 ```{r}
 # Quitamos la variable "mes" debido a que sólamente hay una elección por año y ocurre en ese mismo mes por lo que saber el mes no nos interesa.
-election_data <-election_data |>
-  select(-c(tipo_eleccion,codigo_distrito_electoral,vuelta, mes))
+election_data <-
+  election_data |>
+  select(-c(tipo_eleccion,
+            codigo_distrito_electoral,
+            vuelta, 
+            mes))
 
-election_data <- election_data|> 
+election_data <- 
+  election_data|> 
   mutate(id_municipio = glue("{codigo_ccaa}-{codigo_provincia}-{codigo_municipio}")) |> 
-  relocate(id_municipio, .before = everything())
+  relocate(id_municipio, 
+           .before = everything())
 
-election_data <- election_data |> 
-  select(-c(codigo_ccaa,codigo_provincia,codigo_municipio))
+election_data <- 
+  election_data |> 
+  select(-c(codigo_ccaa,
+            codigo_provincia,
+            codigo_municipio))
 ```
 
 Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2016
 
 ```{r}
-surveys <- surveys|> select(-type_survey) |>
-  filter(exit_poll==FALSE) |> 
-  filter((field_date_to-field_date_from)>0) |> 
+surveys <- 
+  surveys|> 
+  select(-type_survey) |>
+  filter(exit_poll == FALSE) |> 
+  filter((field_date_to-field_date_from) > 1) |> 
   filter(size>=500 & !is.na(size)) |> 
   filter(date_elec>'2016-1-1')
 ```
@@ -163,104 +90,108 @@ Vamos a pasar el conjunto de datos election_data a forma tidy
 election_data <- 
   election_data |> 
   pivot_longer(cols = "BERDEAK-LOS VERDES":"COALICIÓN POR MELILLA", names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
+```
 
+Utilizamos la variable partidos para agrupar todos ellos en solo 12: "PP" "UP" "PSOE" "PNV" "Cs" "ERC" "CIU" "MP" "VOX" "BNG" "EH-BILDU" "OTROS"
 
+```{r}
+# manera 1
 
-# Para saber qué partidos están relacionados con "Unidas Podemos" miramos en la base de datos abbrev.
-abbrev |>
-  mutate("Contar_IU" = str_detect(siglas, "IU|Podem|Ezker Batua")) |> 
-  filter(Contar_IU == TRUE)
+resumen <- 
+  election_data |> 
+  mutate('siglas' = case_when(
+  str_detect(partidos, "EZKER BA|ENTESA|PODEM|IZQUIERDA UNIDA|ESQUERRA UNI|ESQUERDA UNI") ~ "UP",
+  str_detect(partidos, "PP|PARTIDO POPULAR|PARTIT POPULAR") ~ "PP",
+  str_detect(partidos, "PNV|PARTIDO NACIONALISTA VASCO") ~ "PNV",
+  str_detect(partidos, "PSOE|PSC|PARTIDO SOCIALISTA|PARTIT SOCIALISTA") ~ "PSOE",
+  str_detect(partidos, "PAÍS|COMPROMÍS") ~ "MP",
+  str_detect(partidos, "VOX") ~ "VOX",
+  str_detect(partidos, "ARALAR|EUSKO|EUSKAL HERRI|BILDU") ~ "EH-BILDU",
+  str_detect(partidos, "ERC|ESQUERRA REPU") ~ "ERC",
+  str_detect(partidos, "BNG|BLOQUE") ~ "BNG",
+  str_detect(partidos, "CIUTADANS|PARTIDO DE LA CIU") ~ "Cs",
+  str_detect(partidos, "CONVERGENCIA I UNIÓ|CONVERGÈNCIA I UNIÓ|CONVERGENTS") ~ "CIU", 
+  TRUE ~ "OTROS"
+))
 
+resumen
+unique(resumen$siglas)
+```
+
+```{r}
+# manera 2
+
+#Primero tenemos que filtrar el dataset abbrev ya que hay partidos que aceptan múltiples siglas 
+abbrev_sinrepes <- 
+  abbrev |> 
+  group_by(denominacion) |> 
+  slice(1)
+
+# Ahora juntamos el dataset election_data con abbrev_sinrepes para darle a cada partido su correspondiente abreviatura
+resumen_2 <- 
+    election_data |> 
+    left_join(abbrev_sinrepes,
+              by = c('partidos' = 'denominacion'))
+  
+resumen_2 <- 
+  resumen_2 |> 
+   mutate(siglas = case_when(
+     str_detect(siglas, regex("aralar|^EA$|AMAIUR|EH Bildu", ignore_case = TRUE)) ~ 'EH-BILDU',
+     str_detect(siglas, regex("IU|EB-B|ENTESA|PODEMOS|EZKERRA|UP-UPeC|I\\.U\\.", ignore_case = TRUE)) ~ 'UP',
+     str_detect(siglas, regex("^PP$|P\\.P-E\\.U\\.|PP-PAR|PP-FORO|PP-UPM", ignore_case = TRUE)) ~ 'PP',
+     str_detect(siglas, regex("PNV|BAI|Na-Bai", ignore_case = TRUE)) ~ 'PNV',
+     str_detect(siglas, regex("PSOE|PSC|PSPC|PSE", ignore_case = TRUE)) ~ 'PSOE',
+     str_detect(siglas, regex("PAÍS|MÉS COMPROM", ignore_case = TRUE)) ~ 'MP',
+     str_detect(siglas, regex("VOX", ignore_case = TRUE)) ~ 'VOX',
+     str_detect(siglas, regex("C's", ignore_case = TRUE)) ~ 'Cs',
+     str_detect(siglas, regex("CiU|CDC|unio.cat", ignore_case = TRUE)) ~ 'CIU',
+     str_detect(siglas, regex("ERC", ignore_case = TRUE)) ~ 'ERC',
+     str_detect(siglas, regex("BNG|NÓS", ignore_case = TRUE)) ~ 'BNG',
+    # Partidos que no aparecen en abbrev que tenemos que incluir'
+     str_detect(partidos, regex("PARTIT POPULAR|PARTIDO POPULAR|\\(PP\\)", ignore_case = TRUE)) ~ 'PP',
+     str_detect(partidos, regex("CIUTADANS|PARTIDO DE LA CIU", ignore_case = TRUE)) ~ 'Cs',
+     str_detect(partidos, regex("CONVERGÈNCIA i UNIÓ|CONVERGÈNCIA I UNIÓ", ignore_case = TRUE)) ~ 'CIU',
+     str_detect(partidos, regex("IZQUIERDA UNIDA|EZKER ANITZA|ESQUERRA UNIDA|^IU$|PODEMOS|AHAL DUGU|ESQUERDA UNIDA-OS VERDES", ignore_case = TRUE)) ~ 'UP',
+     str_detect(partidos, regex("PSOE|SOCIALISTA OBRER ESPANYOL|DOS SOCIALISTAS", ignore_case = TRUE)) ~ 'PSOE',
+     str_detect(partidos, regex("(EH Bildu)|PARTIDO POLITICO ARALAR", ignore_case = TRUE)) ~ 'EH-BILDU',
+     str_detect(partidos, regex("ESQUERRA REPUBLICANA/CATALUNYA SÍ|ESQUERRA REPUBLICANA$", ignore_case = TRUE)) ~ 'ERC',   
+     TRUE ~ 'OTRO'))
+ 
+#partidos con OTRO
+#prueba <- resumen_2 |> filter(siglas != 'OTRO') |> arrange(partidos)
+#unique(prueba$partidos)
+ 
+#partidos incluidos 
+#prueba <- resumen_2|> filter(siglas != 'OTRO') |> arrange(partidos)
+#unique(prueba$partidos)
 ```
 
 ------------------------------------------------------------------------
-
-Convertimos a tidy:
-
-## Ítems obligatorios
-
-8.  Todo lo que no esté en alguno de los anteriores partidos debe ser correctamente reagrupado (y resumido) en `OTROS`
-
-9.  Las siglas deben ser usadas en las visualizaciones (ideas en <https://r-graph-gallery.com/>).
-
-10. Debes usar todos los archivos en algún momento.
-
-11. Debes descartar las encuestas que:
-
-```         
--   se refieran a elecciones anteriores a 2008
--   sean a pie de urna
--   tamaño muestral desconocido o inferior a 500.
--   tenga 1 día o menos de trabajo de campo.
-```
-
-------------------------------------------------------------------------
-
-## Ítems obligatorios
-
-12. Deberás responder obligatoriamente a las siguientes preguntas (más aquellas que consideres analizar para distinguirte del resto)
-
--   ¿Qué partido fue el ganador en los municipios con más de 100.000 habitantes (censo) en cada una de las elecciones?
-
--   ¿Qué partido fue el segundo cuando el primero fue el PSOE? ¿Y cuando el primero fue el PP?
-
--   ¿A quién beneficia la baja participación?
-
--   ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que determinados partidos ganan en las zonas rurales?
-
-------------------------------------------------------------------------
-
-## Ítems obligatorios
-
--   ¿Cómo calibrar el error de las encuestas (recordemos que las encuestas son de intención de voto a nivel nacional)?
-
--   ¿Qué casas encuestadoras acertaron más y cuáles se desviaron más de los resultados?
-
-Debes incluir [**al menos 3 preguntas "originales" más**]{.hl-orange} que consideres interesantes de responder utilizando los datos.
-
-------------------------------------------------------------------------
-
-## Evaluación
-
-No se valorará más a quien haga más cosas.
-
-Más no siempre es mejor
-
-Se valorará la originalidad (en comparación con el resto de trabajos, ya sea en lo analizado, en el tema tratado, etc.), el cariño puesto en la entrega (el cariño en la vida es importante) y la relevancia de lo realizado.
-
-------------------------------------------------------------------------
-
-## Evaluación
-
-Una vez que tengas los elementos obligatorios de tu base de datos más o menos completos, piensa antes de escribir código: ¿qué podría ser interesante? ¿Qué necesito para obtener un resumen tanto numérico como visual?
-
-Recuerda que el objetivo real es demostrar un dominio de las herramientas vistas a lo largo del curso. Y eso no se mide solo por la cantidad de herramientas utilizadas, sino también por la calidad en su ejecución.
-
-## Deberéis tenerlo todo subido a Github con el enlace generado de manera correcta.
 
 ### Pregunta_1
 
+¿Qué partido fue el ganador en los municipios con más de 100.000 habitantes (censo) en cada una de las elecciones?
+
 ```{r}
-
-# ¿Qué partido fue el ganador en los municipios con más de 100.000 habitantes (censo) en cada una de las elecciones?
-
-ganadores <- election_data |> 
+ganadores <- 
+  election_data |> 
   filter(censo > 100000) |> 
   group_by(anno, id_municipio) |> 
   arrange(desc(votos)) |> 
   slice(1) |>  
-  summarise(partido_ganador = partidos,  
-    max_votos = votos,       
-    censo_municipio = censo) |> 
+  summarise(partido_ganador = partidos,
+            max_votos = votos,
+            censo_municipio = censo) |> 
   ungroup()
 
-
+ganadores
 ```
 
 ### Pregunta_2
 
+¿Qué partido fue el segundo cuando el primero fue el PSOE? ¿Y cuando el primero fue el PP?
+
 ```{r}
-# ¿Qué partido fue el segundo cuando el primero fue el PSOE? ¿Y cuando el primero fue el PP?
 segundos <- 
   resumen |> 
   group_by(anno, siglas) |> 
@@ -270,6 +201,7 @@ segundos <-
   arrange(anno, desc(total_votos)) |>
   ungroup()
 
+segundos
 ```
 
 ```{r}
@@ -306,8 +238,6 @@ segundo_cuando_pp
 ```{r}
 # manera 2
 
-library(extrafont)
-
 ggplot(segundos, 
        aes(x = siglas, 
            y = total_votos, 
@@ -336,4 +266,55 @@ ggplot(segundos,
 
 # PP fue el segundo cuando el primero fue el PSOE
 # PSOE o UP fueron el segundo cuando el primero fue el PP
+```
+
+### Pregunta_3
+
+¿A quién beneficia la baja participación?
+
+```{r}
+
+```
+
+### Pregunta_4
+
+¿Cómo analizar la relación entre censo y voto? ¿Es cierto que
+determinados partidos ganan en las zonas rurales?
+
+```{r}
+
+```
+
+### Pregunta_5
+
+¿Cómo calibrar el error de las encuestas (recordemos que las encuestas son de intención de voto a nivel nacional)?
+
+```{r}
+
+```
+
+### Pregunta_6
+
+¿Qué casas encuestadoras acertaron más y cuáles se desviaron más de los resultados?
+
+```{r}
+
+```
+
+### Pregunta_7
+
+```{r}
+
+```
+
+### Pregunta_8
+
+```{r}
+
+```
+
+### Pregunta_9
+
+```{r}
+
 ```
