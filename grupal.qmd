@@ -272,6 +272,52 @@ ggplot(segundos,
 ¿A quién beneficia la baja participación?
 
 ```{r}
+library(dplyr)
+library(ggplot2)
+
+# Calcular la participación por municipio
+participacion <- 
+  resumen |> 
+    group_by(id_municipio, siglas) |> 
+    summarise(total_votos = sum(votos, na.rm = TRUE), .groups = "drop") |> 
+    left_join(resumen |> 
+      group_by(id_municipio) |> 
+      summarise(participacion_total = sum(votos, na.rm = TRUE), .groups = "drop"),
+    by = "id_municipio") |> 
+    mutate(participacion_relativa = total_votos / participacion_total)
+
+
+# Calcular la correlación entre participación total y votos relativos
+correlacion <- participacion |> 
+  group_by(siglas) |> 
+  summarise(correlacion = cor(participacion_total, participacion_relativa, use = "complete.obs"))
+#Complete.obs se ocupa de los valores NA, no se si hace falta pero por si acaso lo dejo puesto
+#Deberían salir nº entre -1 y 1, si está por encima de 0 la correlación es positiva lo que significa que saldría beneficiado si la participación es alta, y al revés con los resultados negativos
+
+
+#Un coeficiente de correlación POSITIVO significa que, a medida que AUMENTA la participación, la proporción de votos de ese partido tiende a AUMENTAR
+
+#Correlación positiva → Beneficio con alta participación.
+#Correlación negativa → Beneficio con baja participación.
+
+
+
+#Estamos haciendo la correlación entre estas dos cosas
+#Participación total: el total de votos emitidos en un municipio
+#Proporción de votos de un partido (participacion relativa): los votos de un partido como fracción de los votos totales.
+
+
+
+
+
+# Visualización de resultados con un gráfico de barras
+ggplot(correlacion, aes(x = reorder(siglas, correlacion), y = correlacion)) +
+  geom_col(fill = "green") +
+  labs(
+    title = "Correlación entre participación y votos por partido",
+    x = "Partido",
+    y = "Correlación"
+  )  #poner una leyenda con la explicación de cor positiva y negativa y lo que significan con relacion a los datos y el enunciado
 
 ```
 
@@ -355,7 +401,7 @@ ggplot(mapa_mas100k_ganadores)+
   labs(fill="partido_ganador",
        title="Partidos ganadores en municipios de más de cien mil habitantes")+
   theme(plot.title = element_text(hjust = 0.5),
-        legend.position = "bottom")
+        legend.position = "bottom") 
 #+
   #facet_wrap(~ anno)
 
