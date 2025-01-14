@@ -336,6 +336,31 @@ ggplot(segundos,
 ¿Qué casas encuestadoras acertaron más y cuáles se desviaron más de los resultados?
 
 ```{r}
+#hemos cogido resumen2 como ejemplo pero cuando lo tengamos bien ya usamos ese para hacerlos como hay que hacerlo
+resultados <- resumen_2 |> 
+  group_by(anno, siglas) |>                      
+  summarise(Votos_Totales = sum(votos), .groups = "drop") |> 
+  group_by(anno) |> 
+  mutate(Porcentaje = Votos_Totales / sum(Votos_Totales) * 100) |> 
+  select(anno, siglas, Porcentaje) |> 
+  pivot_wider(names_from = siglas, values_from = Porcentaje)
+
+
+casas_encuestadoras <- surveys |> 
+  select(-c(id_pollster,media,field_date_from,field_date_to,exit_poll,turnout)) |> 
+  group_by(date_elec,pollster) |> 
+  summarise(across(everything(), mean, na.rm = FALSE))
+#el valor que aparece en cada pollster para cada eleccion en los partidos es la media ya que alexandra y yo hemos pensado que para unirlas numerosas realizadas para cada eleccion por cada casa hariamos la media y asi obtendríamos un valor único para cada partido con el que podemos comparar
+
+comparacion <- resultado
+#ahora hemos pensado que tenemos que hacer un inner join o un left join dependiendo de lo que queramos que se quede en las tablas. No nos decidimos por cual y ademas tendriamos que tener lo de las siglas y las fechas todas en un mismo formato para poder unirlas bien. ¿que creeis que hacer?
+# # Paso 4: Comparar resultados reales con encuestas
+# comparacion <- resultados_nacionales %>%
+#   left_join(encuestas_agregadas, by = "Partido") %>%
+#   mutate(Diferencia = Encuestas - Real)
+# 
+# # Mostrar la tabla de comparación
+# print(comparacion)
 
 ```
 
