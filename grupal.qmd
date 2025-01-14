@@ -99,15 +99,10 @@ election_data<-election_data |> mutate(fecha=dmy(fecha)) |> select(-c(anno,mes))
 election_data |> distinct(fecha)
 ```
 
---------------------------------------------------------
-
 ```{r}
 election_data <- 
   election_data |> 
   pivot_longer(cols = "BERDEAK-LOS VERDES":"COALICIÓN POR MELILLA", names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
-
-
-```
 
 ------------------------------------------------------------------------
 
@@ -391,12 +386,12 @@ ganadores <-
 ganadores
 ```
 
-==========================================================
 
 ####Añadimos gráfico de España con municipios de más de 100k habitantes
 coloreados por los partidos que ganaron las elecciones en cada uno de los años electorales
 
 ```{r}
+
 
 install.packages("mapSpain")
 library(mapSpain)
@@ -409,6 +404,7 @@ mapSpain::esp_get_munic() |>
 
 ggplot(mapa_mas100k_ganadores)+
   geom_sf(aes(fill=partido_ganador),alpha=0.7, color="gray")+
+
   scale_fill_manual(
     #escogemos los colores correspondientes a los logos de cada partido
     values=c("PP"="#1A4CA0",
@@ -429,11 +425,12 @@ ggplot(mapa_mas100k_ganadores)+
   labs(fill="partido_ganador",
        title="Partidos ganadores en municipios de más de cien mil habitantes")+
   theme(plot.title = element_text(hjust = 0.5),
-        legend.position = "bottom")+
-  facet_wrap(~ fecha)
+        legend.position = "bottom") # +
+  #facet_wrap(~ anno)
+
+
 ```
 
-=========================================================
 
 ### Pregunta_2
 
@@ -588,6 +585,7 @@ totales_election_data <- election_data |>
 Se suele decir que la población de Zaragoza es una muestra representativa de la población española ¿Son los resultados electorales en Zaragoza extrapolables a la población española, excluyendo los votos regionalistas o independentistas?
 
 
+
 ```{r}
 
 ```
@@ -598,4 +596,3 @@ Serían los resultados obtenidos similares a los reales si nos quedáramos solo 
 ```{r}
 
 
-```
