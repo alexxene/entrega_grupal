@@ -27,7 +27,8 @@ library(lubridate)
 library(extrafont)
 library(ggplot2)
 library(patchwork)
-
+library(plotly)
+library(mapSpain)
 ```
 
 ------------------------------------------------------------------------
@@ -119,11 +120,11 @@ Utilizamos la variable partidos para agrupar todos ellos en solo 12: "PP" "UP" "
 resumen <- 
   election_data |> 
   mutate('siglas' = case_when(
-  str_detect(partidos, regex("EZKER BA|ENTESA|PODEM|IZQUIERDA UNIDA|ESQUERRA UNI|ESQUERDA UNI|I\\.U\\.|IU ")) ~ "UP",
+  str_detect(partidos, regex("EZKER BA|ENTESA|PODEM|COMPROMÍS|IZQUIERDA UNIDA|ESQUERRA UNI|ESQUERDA UNI|I\\.U\\.|IU ")) ~ "UP",
   str_detect(partidos, "PP|PARTIDO POPULAR|PARTIT POPULAR") ~ "PP",
   str_detect(partidos, "PNV|PARTIDO NACIONALISTA VASCO") ~ "PNV",
   str_detect(partidos, "PSOE|PSC|PARTIDO SOCIALISTA|PARTIT SOCIALISTA|PARTIT DELS SOCIALISTES |PARTIDO DOS SOCIALISTA") ~ "PSOE",
-  str_detect(partidos, "MAS PAÍS|COMPROMÍS") ~ "MP",
+  str_detect(partidos, "MAS PAÍS") ~ "MP",
   str_detect(partidos, "VOX") ~ "VOX",
   str_detect(partidos, "AMAIUR|ARALAR|EUSKO|EUSKAL HERRI|BILDU") ~ "EH-BILDU",
   str_detect(partidos, "ERC|ESQUERRA REPUBLICANA DE C|ESQUERRA REPUBLICANA$|ESQUERRA REPUBLICANA/") ~ "ERC",
@@ -206,33 +207,14 @@ resumen_total<-resumen_agg |>
 
 ```
 
-Hemos descubierto que las diferencias principales están en en CIU, UP ,MP, y OTROS
+Hemos descubierto que las diferencias principales están en en CIU y UP en 2015.
+Resumen le da 630.000 votos a CIU, pero resumen2 solo 65.000, según la web del ministerio del interior obtuvieron 567.000 (ver fichero Elecciones.xls en el repositorio de Github).
 
---------------------------------------------------------
-#Intentamos encontrar origen de las diferencias
-y qué resultados se parecen más a los reales:
+En cuanto a los votos en 2015 para UP, si se suman los de Podemos, Coalición "En Comú Podem” (En Comú), Coalición “Unidad Popular” y Coalición “Compromís - Podemos - És el Moment”, el ministerio de interior dice que obtuvieron 5.700.000 votos, muy cercano al cálculo de resumen, mientras que resumen2 se queda 500.00 votos corto.
 
-```{r}
+Y parecido ocurre con la agrupación para 2016 para UP: resumen 4.700.000 vs resumen2 4.200.000 vs ministerio 5.000.000.
 
-# Elimina duplicados en cada tabla para `partidos` y `siglas`
-resumen_distinct <- resumen |> distinct(partidos, siglas)
-resumen_2_distinct <- resumen_2 |> distinct(partidos, siglas)
-
-# Realiza el inner join con las tablas filtradas
-tabla_join <- resumen_distinct |> 
-  left_join(resumen_2_distinct, by = "partidos", suffix = c("_resumen", "_resumen2"))
-
-tabla_join<-tabla_join |> 
-  mutate(dif=ifelse(siglas_resumen!=siglas_resumen2,1,0)) |> 
-  filter(dif==1)
-
-tabla_join2 <- resumen_2_distinct |> 
-  left_join(resumen_distinct, by = "partidos", suffix = c("_resumen2", "_resumen"))
-
-tabla_join2<-tabla_join2 |> 
-  mutate(dif=ifelse(siglas_resumen!=siglas_resumen2,1,0)) |> 
-  filter(dif==1)
-```
+Por tanto creemos que la agrupación resumen es más precisa y usaremos esa agrupación para el resto del trabajo.
 
 ------------------------------------------------------------------------
 
@@ -280,7 +262,7 @@ resumen_agg_pct <- resumen_agg_pct |>
 
 ```
 
-
+-------------------------------------------------------------------
 
 ```{r}
 
@@ -398,39 +380,33 @@ coloreados por los partidos que ganaron las elecciones en cada uno de los años 
 
 ```{r}
 
-install.packages("mapSpain")
+#install.packages("mapSpain")
+library(ggplot2)
 library(mapSpain)
-ganadores_LAU<-ganadores |> 
-  mutate(id_municipio=substr(id_municipio, 3, 7))
+library(dplyr)
+library(sf)
 
-mapa_mas100k_ganadores<-
-mapSpain::esp_get_munic() |> 
-    left_join(ganadores_LAU, by=c("LAU_CODE"="id_municipio"))
+ganadores_LAU <- ganadores |> 
+  mutate(id_municipio = substr(id_municipio, 3, 7))
 
-ggplot(mapa_mas100k_ganadores)+
-  geom_sf(aes(fill=partido_ganador),alpha=0.7, color="gray")+
+mapa_mas100k_ganadores <- mapSpain::esp_get_munic() |> 
+  left_join(ganadores_LAU, by = c("LAU_CODE" = "id_municipio"))
+
+ggplot(mapa_mas100k_ganadores) +
+  geom_sf(aes(fill = partido_ganador), alpha = 0.7, color = "grey") +
   scale_fill_manual(
-    #escogemos los colores correspondientes a los logos de cada partido
-    values=c("PP"="#1A4CA0",
-              "UP"="#542C85",
-              "PSOE"="#D50000",
-              "PNV"="#018B3F",
-              "Cs"="#EB6109",
-              "ERC"="#FFCD00",
-              "CIU"="#1E3A5F",
-              "MP"="#5A9A6E",
-              "VOX"="#1D7A2A",
-              "BNG"="#007A33",
-              "EH-BILDU"="#4C9A2A",
-              "OTROS"="pink",
-              "NA"="gray"),
-              na.value = "gray" )+
-  theme_minimal()+
-  labs(fill="partido_ganador",
-       title="Partidos ganadores en municipios de más de cien mil habitantes")+
-  theme(plot.title = element_text(hjust = 0.5),
-        legend.position = "bottom")+
+    values = colores) +
+  theme_minimal() +
+  labs(
+    fill = "partido_ganador",
+    title = "Partidos ganadores en municipios de más de cien mil habitantes"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "bottom"
+  ) +
   facet_wrap(~ fecha)
+
 ```
 
 =========================================================
@@ -501,15 +477,7 @@ ggplot(segundos,
            fill = siglas)) +
   geom_col(alpha = 0.8, 
            width = 0.7) +
-  scale_fill_manual(values = c(
-    "PP" = "#1e4b8f",
-    "PSOE" = "#e30613",
-    "OTROS" = "grey",
-    "UP" = "#782c67",
-    "PNV" = "#008135",
-    "CIU" = "blue",
-    "Cs" = "#ff6a2d",
-    "VOX" = "#77b82a"))  +
+  scale_fill_manual(values = colores)  +
   labs(title = "Los cinco partidos principales en votos por año",
        subtitle = "Elecciones después de 2008",
        x = "Año y partido",
@@ -558,7 +526,27 @@ Sugerencia: Añadir un gráfico interactivo como este donde los puntos son las p
 ![](images/clipboard-3921849863.png)
 
 ```{r}
-
+resultados <- resumen_2 |> 
+  group_by(fecha, siglas) |>                      
+  summarise(Votos_Totales = sum(votos), .groups = "drop") |> 
+  group_by(fecha) |> 
+  mutate(Porcentaje = Votos_Totales / sum(Votos_Totales) * 100) |> 
+  select(fecha, siglas, Porcentaje) |> 
+  pivot_wider(names_from = siglas, values_from = Porcentaje)
+casas_encuestadoras <- surveys |> 
+  select(-c(id_pollster,media,field_date_from,field_date_to,exit_poll,turnout)) |> 
+  group_by(date_elec,pollster) |> 
+  summarise(across(everything(), mean, na.rm = FALSE))
+#el valor que aparece en cada pollster para cada eleccion en los partidos es la media ya que alexandra y yo hemos pensado que para unirlas numerosas realizadas para cada eleccion por cada casa hariamos la media y asi obtendríamos un valor único para cada partido con el que podemos comparar
+comparacion <- resultado
+#ahora hemos pensado que tenemos que hacer un inner join o un left join dependiendo de lo que queramos que se quede en las tablas. No nos decidimos por cual y ademas tendriamos que tener lo de las siglas y las fechas todas en un mismo formato para poder unirlas bien. ¿que creeis que hacer?
+# # Paso 4: Comparar resultados reales con encuestas
+# comparacion <- resultados_nacionales %>%
+#   left_join(encuestas_agregadas, by = "Partido") %>%
+#   mutate(Diferencia = Encuestas - Real)
+# 
+# # Mostrar la tabla de comparación
+# print(comparacion)
 ```
 
 ### Pregunta_7
