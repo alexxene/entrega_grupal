@@ -68,6 +68,7 @@ surveys <-
 ```
 
 ---------------------------------------------------------------
+
 Seguimos con los datos electorales
 
 ```{r}
@@ -97,7 +98,7 @@ election_data <- election_data|>
 #usamos lubridate
 election_data<-election_data |> mutate(fecha=dmy(fecha)) |> select(-c(anno,mes))
 
-election_data |> distinct(fecha)
+# election_data |> distinct(fecha)
 ```
 
 ```{r}
@@ -348,6 +349,7 @@ print(grafico_final)
 
 ```
 
+-------------------------------------------------------------------
 
 ### Pregunta_1
 
@@ -373,11 +375,13 @@ ganadores <-
 
 ```
 
+-------------------------------------------------------------------
 
 ####Añadimos gráfico de España con municipios de más de 100k habitantes
 coloreados por los partidos que ganaron las elecciones en cada uno de los años electorales
 
 ```{r}
+#| eval: false
 
 ganadores_LAU <- ganadores |> 
   mutate(id_municipio = substr(id_municipio, 3, 7))
@@ -519,6 +523,7 @@ Sugerencia: Añadir un gráfico interactivo como este donde los puntos son las p
 ![](images/clipboard-3921849863.png)
 
 ```{r}
+
 resultados <- resumen_2 |> 
   group_by(fecha, siglas) |>                      
   summarise(Votos_Totales = sum(votos), .groups = "drop") |> 
@@ -531,7 +536,7 @@ casas_encuestadoras <- surveys |>
   group_by(date_elec,pollster) |> 
   summarise(across(everything(), mean, na.rm = FALSE))
 #el valor que aparece en cada pollster para cada eleccion en los partidos es la media ya que alexandra y yo hemos pensado que para unirlas numerosas realizadas para cada eleccion por cada casa hariamos la media y asi obtendríamos un valor único para cada partido con el que podemos comparar
-comparacion <- resultado
+# comparacion <- resultado
 #ahora hemos pensado que tenemos que hacer un inner join o un left join dependiendo de lo que queramos que se quede en las tablas. No nos decidimos por cual y ademas tendriamos que tener lo de las siglas y las fechas todas en un mismo formato para poder unirlas bien. ¿que creeis que hacer?
 # # Paso 4: Comparar resultados reales con encuestas
 # comparacion <- resultados_nacionales %>%
