@@ -256,6 +256,8 @@ resumen_agg_pct <- resumen_agg_pct |>
 
 (resumen_agg_pct)
 
+unique(surveys_2$partidos)
+
 ```
 
 -------------------------------------------------------------------
@@ -406,7 +408,7 @@ ggplot(mapa_mas100k_ganadores) +
   facet_wrap(~ fecha)
 
 ```
-
+-------------------------------------------------------------------
 
 ### Pregunta_2
 
@@ -424,6 +426,7 @@ segundos <-
 
 segundos
 ```
+------------------------------------------------------------------- 
 
 ```{r}
 # manera 1
@@ -455,6 +458,7 @@ segundo_cuando_pp <-
 segundo_cuando_pp
 
 ```
+-------------------------------------------------------------------
 
 ```{r}
 # manera 2
@@ -488,6 +492,7 @@ ggplot(segundos,
 # PP fue el segundo cuando el primero fue el PSOE
 # PSOE o UP fueron el segundo cuando el primero fue el PP
 ```
+-------------------------------------------------------------------
 
 ### Pregunta_3
 
@@ -496,6 +501,8 @@ ggplot(segundos,
 ```{r}
 
 ```
+
+-------------------------------------------------------------------
 
 
 ### Pregunta_4
@@ -506,6 +513,8 @@ ggplot(segundos,
 
 ```
 
+-------------------------------------------------------------------
+
 ### Pregunta_5
 
 ¿Cómo calibrar el error de las encuestas (recordemos que las encuestas son de intención de voto a nivel nacional)?
@@ -513,6 +522,8 @@ ggplot(segundos,
 ```{r}
 
 ```
+
+-------------------------------------------------------------------
 
 ### Pregunta_6
 
@@ -524,17 +535,50 @@ Sugerencia: Añadir un gráfico interactivo como este donde los puntos son las p
 
 ```{r}
 
-resultados <- resumen_2 |> 
+#dar el mismo formato de resumen a surveys
+
+surveys_2 <- surveys |> 
+  pivot_longer(cols = "UCD":"EV", names_to = "partidos", values_to = "porcentaje", values_drop_na = TRUE )
+
+# agrupar los partidos 
+
+surveys_3 <- 
+  surveys_2 |> 
+  mutate(partidos = case_when(
+    str_detect(partidos, "UP|IU|PODEMOS|COMPROMIS") ~ "UP",
+    str_detect(partidos, "PP") ~ "PP",
+    str_detect(partidos, "PNV") ~ "PNV",
+    str_detect(partidos, "PSOE") ~ "PSOE",
+    str_detect(partidos, "MP") ~ "MP",
+    str_detect(partidos, "VOX") ~ "VOX",
+    str_detect(partidos, "EH-BILDU|AMAIUR") ~ "EH-BILDU",
+    str_detect(partidos, "ERC") ~ "ERC",
+    str_detect(partidos, "BNG") ~ "BNG",
+    str_detect(partidos, "CS") ~ "Cs",
+    str_detect(partidos, "CIU|CDC") ~ "CIU", 
+    TRUE ~ "OTROS"
+  ))
+
+#sumar los porcentajes para que no aparezcan datos repetidos
+
+surveys_4 <- surveys_3 |> 
+  group_by(date_elec, id_pollster, field_date_from, field_date_to, partidos) |> 
+  mutate(porcentaje = sum(porcentaje, na.rm = TRUE))
+
+# suma de los votos a nivel nacional por eleccion y partido, se convierte este dato en porcentaje para poder compararlo con los datos de surveys
+
+resultados <- resumen |> 
   group_by(fecha, siglas) |>                      
   summarise(Votos_Totales = sum(votos), .groups = "drop") |> 
   group_by(fecha) |> 
   mutate(Porcentaje = Votos_Totales / sum(Votos_Totales) * 100) |> 
-  select(fecha, siglas, Porcentaje) |> 
-  pivot_wider(names_from = siglas, values_from = Porcentaje)
+  select(fecha, siglas, Porcentaje)
+
 casas_encuestadoras <- surveys |> 
   select(-c(id_pollster,media,field_date_from,field_date_to,exit_poll,turnout)) |> 
   group_by(date_elec,pollster) |> 
   summarise(across(everything(), mean, na.rm = FALSE))
+
 #el valor que aparece en cada pollster para cada eleccion en los partidos es la media ya que alexandra y yo hemos pensado que para unirlas numerosas realizadas para cada eleccion por cada casa hariamos la media y asi obtendríamos un valor único para cada partido con el que podemos comparar
 # comparacion <- resultado
 #ahora hemos pensado que tenemos que hacer un inner join o un left join dependiendo de lo que queramos que se quede en las tablas. No nos decidimos por cual y ademas tendriamos que tener lo de las siglas y las fechas todas en un mismo formato para poder unirlas bien. ¿que creeis que hacer?
