@@ -104,7 +104,7 @@ election_data |> distinct(fecha)
 election_data <- 
   election_data |> 
   pivot_longer(cols = "BERDEAK-LOS VERDES":"COALICIÓN POR MELILLA", names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
-
+```
 ------------------------------------------------------------------------
 
 Utilizamos la variable partidos para agrupar todos ellos en solo 12: "PP" "UP" "PSOE" "PNV" "Cs" "ERC" "CIU" "MP" "VOX" "BNG" "EH-BILDU" "OTROS"
@@ -134,6 +134,7 @@ unique(resumen$siglas)
 ```
 
 ```{r}
+
 # manera 2
 
 #Primero tenemos que filtrar el dataset abbrev ya que hay partidos que aceptan múltiples siglas 
@@ -181,7 +182,6 @@ unique(resumen_2$siglas)
 Comprobamos si los resultados obtenidos de las 2 maneras son similares:
 
 ```{r}
-
 
 resumen_agg <- resumen |> 
   group_by(siglas,fecha) |> 
@@ -354,6 +354,11 @@ print(grafico_final)
 ¿Qué partido fue el ganador en los municipios con más de 100.000 habitantes (censo) en cada una de las elecciones?
 
 ```{r}
+# quitar los guiones que separan el cod_mun para poder unirlo después en base a id_municipio 
+
+cod_mun <- cod_mun |> 
+  mutate(cod_mun = str_replace_all(cod_mun, "-", ""))
+
 ganadores <- 
   resumen |> 
   filter(censo > 100000) |> 
@@ -363,9 +368,9 @@ ganadores <-
   summarise(partido_ganador = siglas,
             max_votos = votos,
             censo_municipio = censo) |> 
-  ungroup()
+  ungroup() |> 
+  left_join(cod_mun, by = c("id_municipio" = "cod_mun"))
 
-ganadores
 ```
 
 
@@ -373,7 +378,6 @@ ganadores
 coloreados por los partidos que ganaron las elecciones en cada uno de los años electorales
 
 ```{r}
-
 
 ganadores_LAU <- ganadores |> 
   mutate(id_municipio = substr(id_municipio, 3, 7))
