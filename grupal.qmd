@@ -54,8 +54,7 @@ abbrev <- read_csv(file = "./data/siglas.csv")
 
 Nos ocupamos primero de las encuestas:
 
-Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2008.
-Será necesario hacer un pivot_table como en elecciones
+Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2008. Será necesario hacer un pivot_table como en elecciones
 
 ```{r}
 surveys <- 
@@ -67,7 +66,7 @@ surveys <-
   filter(date_elec>'2008-1-1')
 ```
 
----------------------------------------------------------------
+------------------------------------------------------------------------
 
 Seguimos con los datos electorales
 
@@ -106,6 +105,7 @@ election_data <-
   election_data |> 
   pivot_longer(cols = "BERDEAK-LOS VERDES":"COALICIÓN POR MELILLA", names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
 ```
+
 ------------------------------------------------------------------------
 
 Utilizamos la variable partidos para agrupar todos ellos en solo 12: "PP" "UP" "PSOE" "PNV" "Cs" "ERC" "CIU" "MP" "VOX" "BNG" "EH-BILDU" "OTROS"
@@ -203,8 +203,7 @@ resumen_total<-resumen_agg |>
 
 ```
 
-Hemos descubierto que las diferencias principales están en en CIU y UP en 2015.
-Resumen le da 630.000 votos a CIU, pero resumen2 solo 65.000, según la web del ministerio del interior obtuvieron 567.000 (ver fichero Elecciones.xls en el repositorio de Github).
+Hemos descubierto que las diferencias principales están en en CIU y UP en 2015. Resumen le da 630.000 votos a CIU, pero resumen2 solo 65.000, según la web del ministerio del interior obtuvieron 567.000 (ver fichero Elecciones.xls en el repositorio de Github).
 
 En cuanto a los votos en 2015 para UP, si se suman los de Podemos, Coalición "En Comú Podem” (En Comú), Coalición “Unidad Popular” y Coalición “Compromís - Podemos - És el Moment”, el ministerio de interior dice que obtuvieron 5.700.000 votos, muy cercano al cálculo de resumen, mientras que resumen2 se queda 500.00 votos corto.
 
@@ -215,6 +214,7 @@ Por tanto creemos que la agrupación resumen es más precisa y usaremos esa agru
 ------------------------------------------------------------------------
 
 ### Pregunta 0. Mostrar un gráfico con los resultados electorales para cada año.
+
 Vamos a hacerlo con una función para que acumule en orden de votos los gráficos según la fecha porque hemos encontrado muchos problemas para que reordenara correctamente haciéndolo de manera agregada.
 
 ```{r}
@@ -258,7 +258,7 @@ resumen_agg_pct <- resumen_agg_pct |>
 
 ```
 
--------------------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r}
 
@@ -349,7 +349,7 @@ print(grafico_final)
 
 ```
 
--------------------------------------------------------------------
+------------------------------------------------------------------------
 
 ### Pregunta_1
 
@@ -375,10 +375,9 @@ ganadores <-
 
 ```
 
--------------------------------------------------------------------
+------------------------------------------------------------------------
 
-####Añadimos gráfico de España con municipios de más de 100k habitantes
-coloreados por los partidos que ganaron las elecciones en cada uno de los años electorales
+####Añadimos gráfico de España con municipios de más de 100k habitantes coloreados por los partidos que ganaron las elecciones en cada uno de los años electorales
 
 ```{r}
 #| eval: false
@@ -406,7 +405,6 @@ ggplot(mapa_mas100k_ganadores) +
   facet_wrap(~ fecha)
 
 ```
-
 
 ### Pregunta_2
 
@@ -538,13 +536,45 @@ ggplot(correlacion, aes(x = reorder(siglas, correlacion), y = correlacion)) +
 
 ```
 
-
 ### Pregunta_4
 
 ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que determinados partidos ganan en las zonas rurales?
 
 ```{r}
+# Para analizar la relación entre censo y voto, al ser 2 variables continuas podemos hacerlo mediante una correlación
+resumen |> 
+  summarise(correlacion = cor(censo, votos, use = "complete.obs", method = "pearson"))
 
+
+# Paara ver si hay partidos que se favorecen en las zonas rurales habría que sacar 2 tablas de datos con partidos ganadores:                             Una que tuviera los partidos ganadores en zonas rurales (censo < 10000), y otra que tuviera los partidos ganadores en zonas urbanas (censo > 10000)
+
+
+# Partidos ganadores en zonas rurales
+resumen |> 
+  filter(censo < 10000) |> 
+  group_by(year(fecha), id_municipio) |> 
+  arrange(desc(votos)) |> 
+  slice(1) |> 
+  summarise(partido_ganador = siglas,
+             max_votos = votos,
+            censo_municipio = censo) |>
+  ungroup() |> 
+  count(partido_ganador)
+  
+
+# Partidos ganadores en zonas no rurales
+resumen |> 
+  filter(censo > 10000) |> 
+  group_by(year(fecha), id_municipio) |> 
+  arrange(desc(votos)) |> 
+  slice(1) |> 
+  summarise(partido_ganador = siglas,
+             max_votos = votos,
+            censo_municipio = censo) |>
+  ungroup() |> 
+  count(partido_ganador)
+
+# Para poder ver de forma más clara si hay partidos que se benefician o no, podríamos hacer un gráfico de barras comparando los partidos ganadores en zonas urbanas y rurales
 ```
 
 ### Pregunta_5
@@ -614,15 +644,11 @@ totales_election_data <- election_data |>
 
 Se suele decir que la población de Zaragoza es una muestra representativa de la población española ¿Son los resultados electorales en Zaragoza extrapolables a la población española, excluyendo los votos regionalistas o independentistas?
 
-
-
 ```{r}
 
 ```
 
-
-###Pregunta_10
-Serían los resultados obtenidos similares a los reales si nos quedáramos solo con los votos de la sesión1 (por la mañana) o los de la sesión 2 (por la tarde)?
+###Pregunta_10 Serían los resultados obtenidos similares a los reales si nos quedáramos solo con los votos de la sesión1 (por la mañana) o los de la sesión 2 (por la tarde)?
 
 ```{r}
 
