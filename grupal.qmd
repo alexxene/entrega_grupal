@@ -199,9 +199,9 @@ resumen_total<-resumen_agg |>
   filter(dif!=0) |> 
   arrange(desc(dif))
 
-(resumen_total)
-
+resumen_total
 ```
+-------------------------------------------------------------------
 
 Hemos descubierto que las diferencias principales están en en CIU y UP en 2015. Resumen le da 630.000 votos a CIU, pero resumen2 solo 65.000, según la web del ministerio del interior obtuvieron 567.000 (ver fichero Elecciones.xls en el repositorio de Github).
 
@@ -406,6 +406,7 @@ ggplot(mapa_mas100k_ganadores) +
 
 ```
 
+
 ### Pregunta_2
 
 ¿Qué partido fue el segundo cuando el primero fue el PSOE? ¿Y cuando el primero fue el PP?
@@ -454,6 +455,8 @@ segundo_cuando_pp
 
 ```
 
+-------------------------------------------------------------------
+
 ```{r}
 # manera 2
 
@@ -486,6 +489,8 @@ ggplot(segundos,
 # PP fue el segundo cuando el primero fue el PSOE
 # PSOE o UP fueron el segundo cuando el primero fue el PP
 ```
+
+-------------------------------------------------------------------
 
 ### Pregunta_3
 
@@ -536,6 +541,7 @@ ggplot(correlacion, aes(x = reorder(siglas, correlacion), y = correlacion)) +
 
 ```
 
+
 ### Pregunta_4
 
 ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que determinados partidos ganan en las zonas rurales?
@@ -577,6 +583,8 @@ resumen |>
 # Para poder ver de forma más clara si hay partidos que se benefician o no, podríamos hacer un gráfico de barras comparando los partidos ganadores en zonas urbanas y rurales
 ```
 
+-------------------------------------------------------------------
+
 ### Pregunta_5
 
 ¿Cómo calibrar el error de las encuestas (recordemos que las encuestas son de intención de voto a nivel nacional)?
@@ -584,6 +592,8 @@ resumen |>
 ```{r}
 
 ```
+
+-------------------------------------------------------------------
 
 ### Pregunta_6
 
@@ -594,21 +604,59 @@ Sugerencia: Añadir un gráfico interactivo como este donde los puntos son las p
 ![](images/clipboard-3921849863.png)
 
 ```{r}
+#dar el mismo formato de resumen a surveys
 
-resultados <- resumen_2 |> 
+surveys_2 <- surveys |> 
+  pivot_longer(cols = "UCD":"EV", names_to = "partidos", values_to = "porcentaje", values_drop_na = TRUE )
+
+# agrupar los partidos 
+
+surveys_3 <- 
+  surveys_2 |> 
+  mutate(partidos = case_when(
+    str_detect(partidos, "UP|IU|PODEMOS|COMPROMIS") ~ "UP",
+    str_detect(partidos, "PP") ~ "PP",
+    str_detect(partidos, "PNV") ~ "PNV",
+    str_detect(partidos, "PSOE") ~ "PSOE",
+    str_detect(partidos, "MP") ~ "MP",
+    str_detect(partidos, "VOX") ~ "VOX",
+    str_detect(partidos, "EH-BILDU|AMAIUR") ~ "EH-BILDU",
+    str_detect(partidos, "ERC") ~ "ERC",
+    str_detect(partidos, "BNG") ~ "BNG",
+    str_detect(partidos, "CS") ~ "Cs",
+    str_detect(partidos, "CIU|CDC") ~ "CIU", 
+    TRUE ~ "OTROS"
+  ))
+
+#sumar los porcentajes para que no aparezcan datos repetidos
+
+surveys_4 <- surveys_3 |> 
+  group_by(date_elec, id_pollster, field_date_from, field_date_to, partidos) |> 
+  mutate(porcentaje = sum(porcentaje, na.rm = TRUE)) |> 
+  distinct()
+
+# suma de los votos a nivel nacional por eleccion y partido, se convierte este dato en porcentaje para poder compararlo con los datos de surveys
+
+resultados <- resumen |> 
   group_by(fecha, siglas) |>                      
   summarise(Votos_Totales = sum(votos), .groups = "drop") |> 
   group_by(fecha) |> 
-  mutate(Porcentaje = Votos_Totales / sum(Votos_Totales) * 100) |> 
-  select(fecha, siglas, Porcentaje) |> 
-  pivot_wider(names_from = siglas, values_from = Porcentaje)
-casas_encuestadoras <- surveys |> 
-  select(-c(id_pollster,media,field_date_from,field_date_to,exit_poll,turnout)) |> 
-  group_by(date_elec,pollster) |> 
-  summarise(across(everything(), mean, na.rm = FALSE))
-#el valor que aparece en cada pollster para cada eleccion en los partidos es la media ya que alexandra y yo hemos pensado que para unirlas numerosas realizadas para cada eleccion por cada casa hariamos la media y asi obtendríamos un valor único para cada partido con el que podemos comparar
-# comparacion <- resultado
+  mutate(Porcentaje_real = Votos_Totales / sum(Votos_Totales) * 100) |> 
+  select(fecha, siglas, Porcentaje_real)
+
+casas_encuestadoras <- surveys_4 |> 
+  select(-c(id_pollster, media, field_date_from, field_date_to, exit_poll, turnout)) |> 
+  group_by(date_elec, pollster, partidos) |> 
+  summarise(porcentaje_estimado = mean(porcentaje, na.rm = TRUE), .groups = "drop")
+
+#el valor que aparece en cada pollster para cada eleccion y partido es la media ya que alexandra y yo hemos pensado que para compararlo con los resultados reales lo más conveniente es tener un único dato por casa y elección, ya que se ha hecho más de una estimación en varias ocasiones 
+
+comparacion <- resultados |> 
+  inner_join(casas_encuestadoras, by = c("siglas" = "partidos")) |> #hay que unirlo por eleccion tambien pero no se como porque el dia no coincide 
+  mutate(Diferencia = Porcentaje_real - porcentaje_estimado)
+
 #ahora hemos pensado que tenemos que hacer un inner join o un left join dependiendo de lo que queramos que se quede en las tablas. No nos decidimos por cual y ademas tendriamos que tener lo de las siglas y las fechas todas en un mismo formato para poder unirlas bien. ¿que creeis que hacer?
+
 # # Paso 4: Comparar resultados reales con encuestas
 # comparacion <- resultados_nacionales %>%
 #   left_join(encuestas_agregadas, by = "Partido") %>%
@@ -618,6 +666,8 @@ casas_encuestadoras <- surveys |>
 # print(comparacion)
 ```
 
+-------------------------------------------------------------------
+
 ### Pregunta_7
 
 Nos dice algo sobre el resultado final de las elecciones que se hayan emitido más votos en la primera sesión que en la segunda? ¿Podemos afirmar que los votantes de un partido son más madrugadores que otros?
@@ -625,6 +675,8 @@ Nos dice algo sobre el resultado final de las elecciones que se hayan emitido m�
 ```{r}
 
 ```
+
+-------------------------------------------------------------------
 
 ### Pregunta_8
 
@@ -640,6 +692,8 @@ totales_election_data <- election_data |>
     .groups = "drop")
 ```
 
+-------------------------------------------------------------------
+
 ### Pregunta_9
 
 Se suele decir que la población de Zaragoza es una muestra representativa de la población española ¿Son los resultados electorales en Zaragoza extrapolables a la población española, excluyendo los votos regionalistas o independentistas?
@@ -648,7 +702,11 @@ Se suele decir que la población de Zaragoza es una muestra representativa de la
 
 ```
 
-###Pregunta_10 Serían los resultados obtenidos similares a los reales si nos quedáramos solo con los votos de la sesión1 (por la mañana) o los de la sesión 2 (por la tarde)?
+
+
+###Pregunta_10
+Serían los resultados obtenidos similares a los reales si nos quedáramos solo con los votos de la sesión1 (por la mañana) o los de la sesión 2 (por la tarde)?
+
 
 ```{r}
 
