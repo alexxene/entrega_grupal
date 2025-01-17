@@ -201,7 +201,8 @@ resumen_total<-resumen_agg |>
 
 resumen_total
 ```
--------------------------------------------------------------------
+
+------------------------------------------------------------------------
 
 Hemos descubierto que las diferencias principales están en en CIU y UP en 2015. Resumen le da 630.000 votos a CIU, pero resumen2 solo 65.000, según la web del ministerio del interior obtuvieron 567.000 (ver fichero Elecciones.xls en el repositorio de Github).
 
@@ -406,7 +407,6 @@ ggplot(mapa_mas100k_ganadores) +
 
 ```
 
-
 ### Pregunta_2
 
 ¿Qué partido fue el segundo cuando el primero fue el PSOE? ¿Y cuando el primero fue el PP?
@@ -455,7 +455,7 @@ segundo_cuando_pp
 
 ```
 
--------------------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r}
 # manera 2
@@ -490,7 +490,7 @@ ggplot(segundos,
 # PSOE o UP fueron el segundo cuando el primero fue el PP
 ```
 
--------------------------------------------------------------------
+------------------------------------------------------------------------
 
 ### Pregunta_3
 
@@ -541,49 +541,129 @@ ggplot(correlacion, aes(x = reorder(siglas, correlacion), y = correlacion)) +
 
 ```
 
-
 ### Pregunta_4
 
 ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que determinados partidos ganan en las zonas rurales?
 
 ```{r}
-# Para analizar la relación entre censo y voto, al ser 2 variables continuas podemos hacerlo mediante una correlación
-resumen |> 
-  summarise(correlacion = cor(censo, votos, use = "complete.obs", method = "pearson"))
+# ANALIZANDO RELACIÓN ENTRE CENSO Y VOTO
+
+# Calculamos el total de votos por municipio y por fecha electoral
+relacion_censo_votos <-
+  resumen |> 
+  group_by(fecha, id_municipio, censo) |> 
+  summarise(Total_votos = sum(votos), .groups = "drop")
 
 
-# Paara ver si hay partidos que se favorecen en las zonas rurales habría que sacar 2 tablas de datos con partidos ganadores:                             Una que tuviera los partidos ganadores en zonas rurales (censo < 10000), y otra que tuviera los partidos ganadores en zonas urbanas (censo > 10000)
+# Calcular la correlación entre censo y votos totales
+correlacion <-
+  cor(relacion_censo_votos$censo, relacion_censo_votos$Total_votos)
+print(paste("Correlación entre censo y votos totales:",
+            round(correlacion, 2)))
 
 
-# Partidos ganadores en zonas rurales
-resumen |> 
-  filter(censo < 10000) |> 
-  group_by(year(fecha), id_municipio) |> 
-  arrange(desc(votos)) |> 
-  slice(1) |> 
-  summarise(partido_ganador = siglas,
-             max_votos = votos,
-            censo_municipio = censo) |>
-  ungroup() |> 
-  count(partido_ganador)
-  
-
-# Partidos ganadores en zonas no rurales
-resumen |> 
-  filter(censo > 10000) |> 
-  group_by(year(fecha), id_municipio) |> 
-  arrange(desc(votos)) |> 
-  slice(1) |> 
-  summarise(partido_ganador = siglas,
-             max_votos = votos,
-            censo_municipio = censo) |>
-  ungroup() |> 
-  count(partido_ganador)
-
-# Para poder ver de forma más clara si hay partidos que se benefician o no, podríamos hacer un gráfico de barras comparando los partidos ganadores en zonas urbanas y rurales
+# Visualizar la correlación
+ggplot(relacion_censo_votos, aes(x = censo, y = Total_votos)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", color = "blue", se = FALSE) +
+  labs(
+    title = "Relación entre censo y votos totales",
+    x = "Censo (personas censadas)",
+    y = "Votos totales"
+  ) +
+  theme_minimal()
 ```
 
--------------------------------------------------------------------
+```{r}
+# ANALIZANDO SI CIERTOS PARTIDOS GANAN MÁS EN ZONAS RURALES QUE EN ZONAS URBANAS
+
+# Creamos una tabla en donde guardamos el tipo de zona según el censo:  Rural o Urbano
+rurales_urbanas <-
+  resumen |> 
+  mutate("Zona" = ifelse(censo < 10000, "Rural", "Urbano"))
+
+# Calculamos los votos de cada partido para cada tipo de zona en cada elección
+votos_por_zona <-
+  rurales_urbanas |> 
+  group_by(fecha, Zona, siglas) |> 
+  summarise(Total_votos = sum(votos), .groups = "drop")
+
+# Creamos el gráfico que muestre las diferencias entre partidos, tipos de zona y fechas de elecciones
+ggplot(votos_por_zona, aes(x = siglas, y = Total_votos, fill = Zona)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~ fecha, ncol = 2) + # Dividir gráficos por fecha de elección
+  labs(
+    title = "Comparación de votos por partido entre zonas rurales y urbanas",
+    x = "Siglas",
+    y = "Total de Votos",
+    fill = "Zona"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Como era de esperar, nos salen 6 gráficos (uno por cada fecha electoral) pero el problema es que puede ser bastante complicado de entender a la hora de exponerlo. Es por ello que creo conveniente poner 3 gráficos pero por separados que muestren cómo ha ido evolucionando los votos a lo largo del tiempo, por ejemplo el gráfico del 2008, el del 2016 y el del 2019
+
+# GRÁFICOS 2008, 2016 Y 2019
+
+# 2008
+votos_por_zona_2008 <-
+  rurales_urbanas |> 
+  filter(fecha == "2008-03-01") |> 
+  group_by(Zona, siglas) |> 
+  summarise(Total_votos = sum(votos), .groups = "drop")
+
+ggplot(votos_por_zona_2008, aes(x = siglas, y = Total_votos, fill = Zona)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Comparación de votos por partido entre zonas rurales y urbanas en Marzo de 2008",
+    x = "Siglas",
+    y = "Total de Votos",
+    fill = "Zona"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  theme(plot.title = element_text(size = 11))
+
+# 2016
+votos_por_zona_2016 <-
+  rurales_urbanas |> 
+  filter(fecha == "2016-06-01") |> 
+  group_by(Zona, siglas) |> 
+  summarise(Total_votos = sum(votos), .groups = "drop")
+
+ggplot(votos_por_zona_2016, aes(x = siglas, y = Total_votos, fill = Zona)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Comparación de votos por partido entre zonas rurales y urbanas en Junio de 2016",
+    x = "Siglas",
+    y = "Total de Votos",
+    fill = "Zona"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  theme(plot.title = element_text(size = 11))
+
+# 2019 (la última)
+votos_por_zona_2019 <-
+  rurales_urbanas |> 
+  filter(fecha == "2019-11-01") |> 
+  group_by(Zona, siglas) |> 
+  summarise(Total_votos = sum(votos), .groups = "drop")
+
+ggplot(votos_por_zona_2019, aes(x = siglas, y = Total_votos, fill = Zona)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Comparación de votos por partido entre zonas rurales y urbanas en Noviembre de 2019",
+    x = "Siglas",
+    y = "Total de Votos",
+    fill = "Zona"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  theme(plot.title = element_text(size = 11))
+```
+
+------------------------------------------------------------------------
 
 ### Pregunta_5
 
@@ -593,7 +673,7 @@ resumen |>
 
 ```
 
--------------------------------------------------------------------
+------------------------------------------------------------------------
 
 ### Pregunta_6
 
@@ -666,7 +746,7 @@ comparacion <- resultados |>
 # print(comparacion)
 ```
 
--------------------------------------------------------------------
+------------------------------------------------------------------------
 
 ### Pregunta_7
 
@@ -676,7 +756,7 @@ Nos dice algo sobre el resultado final de las elecciones que se hayan emitido m�
 
 ```
 
--------------------------------------------------------------------
+------------------------------------------------------------------------
 
 ### Pregunta_8
 
@@ -692,7 +772,7 @@ totales_election_data <- election_data |>
     .groups = "drop")
 ```
 
--------------------------------------------------------------------
+------------------------------------------------------------------------
 
 ### Pregunta_9
 
@@ -702,11 +782,7 @@ Se suele decir que la población de Zaragoza es una muestra representativa de la
 
 ```
 
-
-
-###Pregunta_10
-Serían los resultados obtenidos similares a los reales si nos quedáramos solo con los votos de la sesión1 (por la mañana) o los de la sesión 2 (por la tarde)?
-
+###Pregunta_10 Serían los resultados obtenidos similares a los reales si nos quedáramos solo con los votos de la sesión1 (por la mañana) o los de la sesión 2 (por la tarde)?
 
 ```{r}
 
