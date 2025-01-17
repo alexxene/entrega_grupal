@@ -9,13 +9,14 @@ author: "Iratxe Valero Ochoa (DNI:02724987Q),
         María Belén Lavanda Rocano (DNI:02723226A) "
 format:
   revealjs:
+    slide-number: true
     theme: [style.scss]
     embed-resources: true
 execute: 
   echo: true
 ---
 
-## Paquetes necesarios
+## Paquetes necesarios {background-image="fondo_diapos.png" background-size="cover"}
 
 ```{r}
 rm(list = ls())
@@ -33,12 +34,16 @@ library(mapSpain)
 
 ------------------------------------------------------------------------
 
-## Datos
+## Datos {background-image="fondo_diapos.png" background-size="cover"}
 
+::: incremental
 -   `election_data`: archivo con las elecciones al congreso
 -   `cod_mun`: archivo con los códigos y nombres de cada municipio
 -   `abbrev`: siglas de cada partido
 -   `surveys`: encuestas electorales desde 1982.
+:::
+
+. . .
 
 ```{r}
 #| results: 'hide'
@@ -51,19 +56,23 @@ abbrev <- read_csv(file = "./data/siglas.csv")
 
 ------------------------------------------------------------------------
 
-## Limpieza de datos
+## Limpieza de datos {background-image="fondo_diapos.png" background-size="cover"}
 
 Nos ocupamos primero de las encuestas:
 
 Eliminar los datos de `surveys`:
 
--   *se refieran a elecciones anteriores a 2008*
+::: incremental
+-   *se refieran a elecciones* <mark>anteriores</mark> a 2008
 
 -   *sean a pie de urna*
 
--   *tamaño muestral desconocido o inferior a 500.*
+-   *tamaño muestral* <mark>desconocido</mark> o <mark>inferior a 500</mark>.
 
 -   *tenga 1 día o menos de trabajo de campo.*
+:::
+
+. . .
 
 ```{r}
 surveys <- 
@@ -78,9 +87,12 @@ surveys <-
 
 ------------------------------------------------------------------------
 
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
 Seguimos con los datos electorales
 
 ```{r}
+
 election_data <-
   election_data |>
   select(-c(tipo_eleccion,
@@ -91,17 +103,28 @@ election_data <-
 #Combinamos los codigos para formar id_municipio
 election_data <- 
   election_data|> 
-  mutate(id_municipio = glue("{codigo_ccaa}{codigo_provincia}{codigo_municipio}")) |> 
+  mutate(id_municipio = 
+           glue("{codigo_ccaa}{codigo_provincia}{codigo_municipio}")) |> 
   relocate(id_municipio, .before=codigo_ccaa)
 
-#Mantenemos part1 y part2 pq nos pueden resultar útiles para alguna pregunta más adelante
+#Mantenemos participación 1 y 2 
 election_data <- 
   election_data |> 
   select(-c(codigo_ccaa,
             codigo_provincia,
             codigo_municipio,))
 
-#Configuramos la fecha predeterminada como el día 1 y combinamos el mes y el año para formar una fecha completa.
+```
+
+```         
+```
+
+------------------------------------------------------------------------
+
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
+```{r}
+#Configuramos la fecha predeterminada como el día 1 y unimos mes con año 
 election_data <- 
   election_data|> 
   mutate(fecha = glue("1-{mes}-{anno}")) |> 
@@ -109,8 +132,6 @@ election_data <-
   mutate(fecha=dmy(fecha)) |> 
   select(-c(anno,mes))
 ```
-
-------------------------------------------------------------------------
 
 Convertimos `election_data` en tidydata
 
@@ -125,6 +146,8 @@ election_data <-
 ```
 
 ------------------------------------------------------------------------
+
+##  {background-image="fondo_diapos.png" background-size="cover"}
 
 Utilizamos la variable **partidos** para agrupar todos ellos en solo **12**:
 
@@ -150,12 +173,14 @@ resumen <-
   str_detect(partidos, "CIUTADANS|PARTIDO DE LA CIU") ~ "Cs",
   str_detect(partidos, "CONVERGENCIA I| CONVERGENCIA i|CONVERGÈNCIA|UNIÓ D") ~ "CIU", 
   TRUE ~ "OTROS"
-))
+)) |> pivot_longer(cols = c("participacion_1", "participacion_2"), names_to = "sesion", values_to = "votos_sesion") |> relocate(sesion, .before = votos_blancos) |> relocate(votos_sesion, .before = votos_blancos)
 
 unique(resumen$siglas)
 ```
 
 ------------------------------------------------------------------------
+
+##  {background-image="fondo_diapos.png" background-size="cover"}
 
 #### Manera 2
 
@@ -195,12 +220,14 @@ resumen_2 <-
      str_detect(partidos, regex("PSOE|SOCIALISTA OBRER ESPANYOL|DOS SOCIALISTAS", ignore_case = TRUE)) ~ 'PSOE',
      str_detect(partidos, regex("(EH Bildu)|PARTIDO POLITICO ARALAR|EUSKO", ignore_case = TRUE)) ~ 'EH-BILDU',
      str_detect(partidos, regex("ESQUERRA REPUBLICANA/CATALUNYA SÍ|ESQUERRA REPUBLICANA$", ignore_case = TRUE)) ~ 'ERC',   
-     TRUE ~ 'OTROS'))
+     TRUE ~ 'OTROS')) |> pivot_longer(cols = c("participacion_1", "participacion_2"), names_to = "sesion", values_to = "votos_sesion") |> relocate(sesion, .before = votos_blancos) |> relocate(votos_sesion, .before = votos_blancos)
 
 unique(resumen_2$siglas)
 ```
 
 ------------------------------------------------------------------------
+
+##  {background-image="fondo_diapos.png" background-size="cover"}
 
 Comprobamos si los resultados obtenidos de las 2 maneras son similares:
 
@@ -228,6 +255,8 @@ resumen_total
 
 ------------------------------------------------------------------------
 
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
 Hemos descubierto que las diferencias principales están en en CIU y UP en 2015. `Resumen` le da 630.000 votos a CIU, pero `resumen2` solo 65.000, según la web del ministerio del interior obtuvieron 567.000 (ver fichero Elecciones.xls en el repositorio de Github).
 
 En cuanto a los votos en 2015 para UP, si se suman los de Podemos, Coalición "En Comú Podem” (En Comú), Coalición “Unidad Popular” y Coalición “Compromís - Podemos - És el Moment”, el ministerio de interior dice que obtuvieron 5.700.000 votos, muy cercano al cálculo de `resumen`, mientras que `resumen2` se queda 500.00 votos corto.
@@ -238,7 +267,9 @@ Por tanto creemos que la agrupación `resumen` es más precisa y usaremos esa ag
 
 ------------------------------------------------------------------------
 
-### Pregunta 0. Mostrar un gráfico con los resultados electorales para cada año.
+## Pregunta_0 {background-image="fondo_diapos.png" background-size="cover"}
+
+Mostrar un gráfico con los resultados electorales para cada año.
 
 Vamos a hacerlo con una función para que acumule en orden de votos los gráficos según la fecha porque hemos encontrado muchos problemas para que reordenara correctamente haciéndolo de manera agregada.
 
@@ -282,6 +313,8 @@ resumen_agg_pct <-
 ```
 
 ------------------------------------------------------------------------
+
+##  {background-image="fondo_diapos.png" background-size="cover"}
 
 ```{r}
 # Función para generar gráficos individuales por fecha
@@ -375,6 +408,8 @@ grafico_final <-
 
 ------------------------------------------------------------------------
 
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
 ```{r}
 # Mostrar el gráfico combinado
 grafico_final
@@ -382,7 +417,7 @@ grafico_final
 
 ------------------------------------------------------------------------
 
-### Pregunta_1
+## Pregunta_1 {background-image="fondo_diapos.png" background-size="cover"}
 
 ¿Qué partido fue el ganador en los municipios con más de 100.000 habitantes (censo) en cada una de las elecciones?
 
@@ -408,7 +443,9 @@ ganadores <-
 
 ------------------------------------------------------------------------
 
-####Añadimos gráfico de España con municipios de más de 100k habitantes coloreados por los partidos que ganaron las elecciones en cada uno de los años electorales
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
+-   Añadimos gráfico de España con municipios de más de 100k habitantes coloreados por los partidos que ganaron las elecciones en cada uno de los años electorales
 
 ```{r}
 #| eval: false
@@ -439,7 +476,7 @@ ggplot(mapa_mas100k_ganadores) +
 
 ------------------------------------------------------------------------
 
-### Pregunta_2
+## Pregunta_2 {background-image="fondo_diapos.png" background-size="cover"}
 
 ¿Qué partido fue el segundo cuando el primero fue el PSOE? ¿Y cuando el primero fue el PP?
 
@@ -489,6 +526,8 @@ segundo_cuando_pp
 
 ------------------------------------------------------------------------
 
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
 ```{r}
 # manera 2
 
@@ -524,9 +563,9 @@ ggplot(segundos,
 
 ------------------------------------------------------------------------
 
-### Pregunta_3
+## Pregunta_3 {background-image="fondo_diapos.png" background-size="cover"}
 
-¿A quién beneficia la baja participación?
+-   ¿A quién beneficia la baja participación?
 
 ```{r}
 
@@ -573,9 +612,9 @@ ggplot(correlacion, aes(x = reorder(siglas, correlacion), y = correlacion)) +
 
 ```
 
-### Pregunta_4
+## Pregunta_4 {background-image="fondo_diapos.png" background-size="cover"}
 
-¿Cómo analizar la relación entre censo y voto? ¿Es cierto que determinados partidos ganan en las zonas rurales?
+-   ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que determinados partidos ganan en las zonas rurales?
 
 ```{r}
 # ANALIZANDO RELACIÓN ENTRE CENSO Y VOTO
@@ -706,9 +745,9 @@ ggplotly(zona_2019)
 
 ------------------------------------------------------------------------
 
-### Pregunta_5
+## Pregunta_5 {background-image="fondo_diapos.png" background-size="cover"}
 
-¿Cómo calibrar el error de las encuestas (recordemos que las encuestas son de intención de voto a nivel nacional)?
+-   ¿Cómo calibrar el error de las encuestas (recordemos que las encuestas son de intención de voto a nivel nacional)?
 
 ```{r}
 #dar el mismo formato de resumen a surveys
@@ -799,7 +838,7 @@ graf_int_casas <- ggplotly(grafico_casas)
 
 ------------------------------------------------------------------------
 
-### Pregunta_6
+## Pregunta_6 {background-image="fondo_diapos.png" background-size="cover"}
 
 ¿Qué casas encuestadoras acertaron más y cuáles se desviaron más de los resultados?
 
@@ -813,9 +852,9 @@ Sugerencia: Añadir un gráfico interactivo como este donde los puntos son las p
 
 ------------------------------------------------------------------------
 
-### Pregunta_7
+## Pregunta_7 {background-image="fondo_diapos.png" background-size="cover"}
 
-Nos dice algo sobre el resultado final de las elecciones que se hayan emitido más votos en la primera sesión que en la segunda? ¿Podemos afirmar que los votantes de un partido son más madrugadores que otros?
+-   Nos dice algo sobre el resultado final de las elecciones que se hayan emitido más votos en la primera sesión que en la segunda? ¿Podemos afirmar que los votantes de un partido son más madrugadores que otros?
 
 ```{r}
 
@@ -823,7 +862,7 @@ Nos dice algo sobre el resultado final de las elecciones que se hayan emitido m�
 
 ------------------------------------------------------------------------
 
-### Pregunta_8
+## Pregunta_8 {background-image="fondo_diapos.png" background-size="cover"}
 
 Elaborar mapas de España con ganadores y participacion por provincia y ccaa
 
@@ -905,7 +944,7 @@ ggplot(mapa_datos) +
 
 ------------------------------------------------------------------------
 
-### Pregunta_9
+## Pregunta_9 {background-image="fondo_diapos.png" background-size="cover"}
 
 Se suele decir que la población de Zaragoza es una muestra representativa de la población española ¿Son los resultados electorales en Zaragoza extrapolables a la población española, excluyendo los votos regionalistas o independentistas?
 
@@ -915,10 +954,18 @@ Se suele decir que la población de Zaragoza es una muestra representativa de la
 
 ------------------------------------------------------------------------
 
-### Pregunta_10
+## Pregunta_10 {background-image="fondo_diapos.png" background-size="cover"}
 
 Serían los resultados obtenidos similares a los reales si nos quedáramos solo con los votos de la sesión1 (por la mañana) o los de la sesión 2 (por la tarde)?
 
 ```{r}
 
 ```
+
+------------------------------------------------------------------------
+
+##  {background-image="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHRwOHhpOTk0OTN4cTBkZzl2eWtmdjRzbnMzdHZmM3BjejdmeHc2ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/KAdawkDvVuacWBfgbc/giphy.gif" background-size="contain"}
+
+::: r-fit-text
+FIN
+:::
