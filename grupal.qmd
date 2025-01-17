@@ -760,41 +760,33 @@ comparacion <- casas_encuestadoras |>
   mutate(error = Porcentaje_real - porcentaje_estimado) |> 
   select(date_elec, id_pollster, pollster, partidos, Porcentaje_real, porcentaje_estimado, error)
 
-
-grafico_resultados <- ggplot(resultados, aes(x = siglas, y = Porcentaje_real, fill = siglas)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(
-    title = "Porcentaje de votos por partido",
-    x = "Partido",
-    y = "Porcentaje de votos"
-  ) +
-#  theme_minimal()+
-  scale_fill_manual(values = colores) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1), # Rotar etiquetas en eje X
-    legend.position = "none" # Ocultar leyenda, ya que los colores se explican con las etiquetas
-  ) +
-    facet_wrap(~fecha) # Un gráfico por año
-
-grafico_casas <- ggplot(casas_encuestadoras, aes(x = partidos, y = porcentaje_estimado, color = partidos, label=pollster)) +
-  geom_point(shape = 16, size = 0.5, position = position_jitter(width = 0.1, height = 0)) + # Puntos de estimación de votos
-  labs(
-    title = "Estimación de votos por partido",
-    x = "Partido",
-    y = "Estimación de votos (%)"
-  ) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1), # Rotar etiquetas en eje X
-    legend.position = "none" # Ocultar leyenda
-  ) +
-  facet_wrap(~date_elec) + # Un gráfico por año
-  scale_color_manual(values = colores) # Asignar colores personalizados
-
 library(plotly)
 
-graf_int_resultados <- ggplotly(grafico_resultados)
-graf_int_casas <- ggplotly(grafico_casas)
-  
+casas_encuestadoras <- casas_encuestadoras |> 
+  rename(fecha = date_elec)
+
+grafico_combinado <- ggplot() +
+  geom_bar(data = resultados, 
+           aes(x = siglas, y = Porcentaje_real, fill = siglas), 
+           stat = "identity", position = "dodge") +   # gráfico de barras con el porcentaje real de votos por partido y elección 
+  geom_jitter(data = casas_encuestadoras, 
+              aes(x = partidos, y = porcentaje_estimado, label = pollster), 
+              color = "black", shape = 16, size = 0.5, 
+              position = position_jitter(width = 0.1, height = 0)) + # grafico de puntos con porceentajes estimados de cada casa por partido y elección
+  labs(title = "Porcentaje de votos reales y estimaciones por partido",
+    x = "Partido",
+    y = "Porcentaje") +
+  scale_fill_manual(values = colores) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none") +
+  facet_wrap(~fecha)
+
+
+grafico_interactivo <- ggplotly(grafico_combinado)
+
+grafico_interactivo
+
+
 ```
 
 ------------------------------------------------------------------------
