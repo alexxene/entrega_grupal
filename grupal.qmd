@@ -120,7 +120,7 @@ resumen <-
   str_detect(partidos, "PP|PARTIDO POPULAR|PARTIT POPULAR") ~ "PP",
   str_detect(partidos, "PNV|PARTIDO NACIONALISTA VASCO") ~ "PNV",
   str_detect(partidos, "PSOE|PSC|PARTIDO SOCIALISTA|PARTIT SOCIALISTA|PARTIT DELS SOCIALISTES |PARTIDO DOS SOCIALISTA") ~ "PSOE",
-  str_detect(partidos, "MAS PAÍS") ~ "MP",
+  str_detect(partidos, "MÁS PAÍS|PAÍS|MÉS COMPROM") ~ "MP",
   str_detect(partidos, "VOX") ~ "VOX",
   str_detect(partidos, "AMAIUR|ARALAR|EUSKO|EUSKAL HERRI|BILDU") ~ "EH-BILDU",
   str_detect(partidos, "ERC|ESQUERRA REPUBLICANA DE C|ESQUERRA REPUBLICANA$|ESQUERRA REPUBLICANA/") ~ "ERC",
@@ -618,10 +618,11 @@ surveys_2 <-
 
 casas_encuestadoras <- surveys_2 |> 
   select(c(date_elec,id_pollster,pollster,partidos,porcentaje)) |> #seleccionamos solo las columnas necesarias
-  mutate(date_elec = format(as.Date(date_elec), "%Y-%m")) |> #quitamos el día para después no tener problemas en la comparación  
+  mutate(date_elec = format(as.Date(date_elec), "%Y-%m")) |> #quitamos el día para después no tener problemas en la comparación
   group_by(date_elec, id_pollster, partidos) |> 
-  mutate(porcentaje_estimado = mean(porcentaje, na.rm = TRUE)) |> 
-  distinct() #eliminar columnas repetidas
+  mutate(porcentaje_estimado = mean(porcentaje, na.rm = TRUE)) |>
+  distinct(date_elec, id_pollster, partidos, .keep_all = TRUE) |> #eliminar filas repetidas
+  select(-porcentaje) # ya no nos sirve
 
 # suma de los votos a nivel nacional por eleccion y partido, se convierte este dato en porcentaje para poder compararlo con los datos de surveys
 
@@ -634,12 +635,45 @@ resultados <- resumen |>
   select(fecha, siglas, Porcentaje_real)
 
 comparacion <- casas_encuestadoras |> 
-  inner_join(resultados, by = c("date_elec" = "fecha", "partidos" = "siglas")) |> #unir por fecha y partido 
+  left_join(resultados, by = c("date_elec" = "fecha", "partidos" = "siglas")) |> #unir por fecha y partido 
   mutate(error = Porcentaje_real - porcentaje_estimado) |> 
   select(date_elec, id_pollster, pollster, partidos, Porcentaje_real, porcentaje_estimado, error)
 
-comparacion
 
+grafico_resultados <- ggplot(resultados, aes(x = siglas, y = Porcentaje_real, fill = siglas)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Porcentaje de votos por partido",
+    x = "Partido",
+    y = "Porcentaje de votos"
+  ) +
+#  theme_minimal()+
+  scale_fill_manual(values = colores) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1), # Rotar etiquetas en eje X
+    legend.position = "none" # Ocultar leyenda, ya que los colores se explican con las etiquetas
+  ) +
+    facet_wrap(~fecha) # Un gráfico por año
+
+grafico_casas <- ggplot(casas_encuestadoras, aes(x = partidos, y = porcentaje_estimado, color = partidos, label=pollster)) +
+  geom_point(shape = 16, size = 0.5, position = position_jitter(width = 0.1, height = 0)) + # Puntos de estimación de votos
+  labs(
+    title = "Estimación de votos por partido",
+    x = "Partido",
+    y = "Estimación de votos (%)"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1), # Rotar etiquetas en eje X
+    legend.position = "none" # Ocultar leyenda
+  ) +
+  facet_wrap(~date_elec) + # Un gráfico por año
+  scale_color_manual(values = colores) # Asignar colores personalizados
+
+library(plotly)
+
+graf_int_resultados <- ggplotly(grafico_resultados)
+graf_int_casas <- ggplotly(grafico_casas)
+  
 ```
 
 -------------------------------------------------------------------
