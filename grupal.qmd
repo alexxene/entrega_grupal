@@ -888,3 +888,7 @@ Serían los resultados obtenidos similares a los reales si nos quedáramos solo 
 ```{r}
 
 ```
+
+```{r}
+
+```
