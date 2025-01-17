@@ -590,20 +590,6 @@ resumen |>
 ¿Cómo calibrar el error de las encuestas (recordemos que las encuestas son de intención de voto a nivel nacional)?
 
 ```{r}
-
-```
-
--------------------------------------------------------------------
-
-### Pregunta_6
-
-¿Qué casas encuestadoras acertaron más y cuáles se desviaron más de los resultados?
-
-Sugerencia: Añadir un gráfico interactivo como este donde los puntos son las previsiones de las casas encuestadoreas y las barras los resultados reales
-
-![](images/clipboard-3921849863.png)
-
-```{r}
 #dar el mismo formato de resumen a surveys
 
 surveys_2 <- surveys |> 
@@ -611,7 +597,7 @@ surveys_2 <- surveys |>
 
 # agrupar los partidos 
 
-surveys_3 <- 
+surveys_2 <- 
   surveys_2 |> 
   mutate(partidos = case_when(
     str_detect(partidos, "UP|IU|PODEMOS|COMPROMIS") ~ "UP",
@@ -628,42 +614,46 @@ surveys_3 <-
     TRUE ~ "OTROS"
   ))
 
-#sumar los porcentajes para que no aparezcan datos repetidos
+#el valor porcentaje_estimado que aparece en cada pollster para cada eleccion y partido es la media ya que alexandra y yo hemos pensado que para compararlo con los resultados reales lo más conveniente es tener un único dato por casa, partido y elección, ya que es como aparece en los resultados reales 
 
-surveys_4 <- surveys_3 |> 
-  group_by(date_elec, id_pollster, field_date_from, field_date_to, partidos) |> 
-  mutate(porcentaje = sum(porcentaje, na.rm = TRUE)) |> 
-  distinct()
+casas_encuestadoras <- surveys_2 |> 
+  select(c(date_elec,id_pollster,pollster,partidos,porcentaje)) |> #seleccionamos solo las columnas necesarias
+  mutate(date_elec = format(as.Date(date_elec), "%Y-%m")) |> #quitamos el día para después no tener problemas en la comparación  
+  group_by(date_elec, id_pollster, partidos) |> 
+  mutate(porcentaje_estimado = mean(porcentaje, na.rm = TRUE)) |> 
+  distinct() #eliminar columnas repetidas
 
 # suma de los votos a nivel nacional por eleccion y partido, se convierte este dato en porcentaje para poder compararlo con los datos de surveys
 
 resultados <- resumen |> 
+  mutate(fecha = format(as.Date(fecha), "%Y-%m")) |> 
   group_by(fecha, siglas) |>                      
   summarise(Votos_Totales = sum(votos), .groups = "drop") |> 
   group_by(fecha) |> 
   mutate(Porcentaje_real = Votos_Totales / sum(Votos_Totales) * 100) |> 
   select(fecha, siglas, Porcentaje_real)
 
-casas_encuestadoras <- surveys_4 |> 
-  select(-c(id_pollster, media, field_date_from, field_date_to, exit_poll, turnout)) |> 
-  group_by(date_elec, pollster, partidos) |> 
-  summarise(porcentaje_estimado = mean(porcentaje, na.rm = TRUE), .groups = "drop")
+comparacion <- casas_encuestadoras |> 
+  inner_join(resultados, by = c("date_elec" = "fecha", "partidos" = "siglas")) |> #unir por fecha y partido 
+  mutate(error = Porcentaje_real - porcentaje_estimado) |> 
+  select(date_elec, id_pollster, pollster, partidos, Porcentaje_real, porcentaje_estimado, error)
 
-#el valor que aparece en cada pollster para cada eleccion y partido es la media ya que alexandra y yo hemos pensado que para compararlo con los resultados reales lo más conveniente es tener un único dato por casa y elección, ya que se ha hecho más de una estimación en varias ocasiones 
+comparacion
 
-comparacion <- resultados |> 
-  inner_join(casas_encuestadoras, by = c("siglas" = "partidos")) |> #hay que unirlo por eleccion tambien pero no se como porque el dia no coincide 
-  mutate(Diferencia = Porcentaje_real - porcentaje_estimado)
+```
 
-#ahora hemos pensado que tenemos que hacer un inner join o un left join dependiendo de lo que queramos que se quede en las tablas. No nos decidimos por cual y ademas tendriamos que tener lo de las siglas y las fechas todas en un mismo formato para poder unirlas bien. ¿que creeis que hacer?
+-------------------------------------------------------------------
 
-# # Paso 4: Comparar resultados reales con encuestas
-# comparacion <- resultados_nacionales %>%
-#   left_join(encuestas_agregadas, by = "Partido") %>%
-#   mutate(Diferencia = Encuestas - Real)
-# 
-# # Mostrar la tabla de comparación
-# print(comparacion)
+### Pregunta_6
+
+¿Qué casas encuestadoras acertaron más y cuáles se desviaron más de los resultados?
+
+Sugerencia: Añadir un gráfico interactivo como este donde los puntos son las previsiones de las casas encuestadoreas y las barras los resultados reales
+
+![](images/clipboard-3921849863.png)
+
+```{r}
+
 ```
 
 -------------------------------------------------------------------
