@@ -95,10 +95,8 @@ Seguimos con los datos electorales
 
 election_data <-
   election_data |>
-  select(-c(tipo_eleccion,
-            codigo_distrito_electoral,
-            numero_mesas,
-            vuelta))
+  select(-c(tipo_eleccion,codigo_distrito_electoral,
+            numero_mesas, vuelta))
 
 #Combinamos los codigos para formar id_municipio
 election_data <- 
@@ -107,16 +105,11 @@ election_data <-
            glue("{codigo_ccaa}{codigo_provincia}{codigo_municipio}")) |> 
   relocate(id_municipio, .before=codigo_ccaa)
 
-#Mantenemos participación 1 y 2 
 election_data <- 
   election_data |> 
-  select(-c(codigo_ccaa,
-            codigo_provincia,
-            codigo_municipio,))
+  select(-c(codigo_ccaa,codigo_provincia,
+            codigo_municipio,participacion_1,participacion_2))
 
-```
-
-```         
 ```
 
 ------------------------------------------------------------------------
@@ -173,8 +166,7 @@ resumen <-
   str_detect(partidos, "CIUTADANS|PARTIDO DE LA CIU") ~ "Cs",
   str_detect(partidos, "CONVERGENCIA I| CONVERGENCIA i|CONVERGÈNCIA|UNIÓ D") ~ "CIU", 
   TRUE ~ "OTROS"
-)) |> pivot_longer(cols = c("participacion_1", "participacion_2"), names_to = "sesion", values_to = "votos_sesion") |> relocate(sesion, .before = votos_blancos) |> relocate(votos_sesion, .before = votos_blancos)
-
+)) 
 unique(resumen$siglas)
 ```
 
@@ -190,7 +182,6 @@ abbrev_sinrepes <-
   abbrev |> 
   group_by(denominacion) |> 
   slice(1)
-
 
 # Ahora juntamos el dataset election_data con abbrev_sinrepes para darle a cada partido su correspondiente abreviatura
 resumen_2 <- 
@@ -220,7 +211,7 @@ resumen_2 <-
      str_detect(partidos, regex("PSOE|SOCIALISTA OBRER ESPANYOL|DOS SOCIALISTAS", ignore_case = TRUE)) ~ 'PSOE',
      str_detect(partidos, regex("(EH Bildu)|PARTIDO POLITICO ARALAR|EUSKO", ignore_case = TRUE)) ~ 'EH-BILDU',
      str_detect(partidos, regex("ESQUERRA REPUBLICANA/CATALUNYA SÍ|ESQUERRA REPUBLICANA$", ignore_case = TRUE)) ~ 'ERC',   
-     TRUE ~ 'OTROS')) |> pivot_longer(cols = c("participacion_1", "participacion_2"), names_to = "sesion", values_to = "votos_sesion") |> relocate(sesion, .before = votos_blancos) |> relocate(votos_sesion, .before = votos_blancos)
+     TRUE ~ 'OTROS'))
 
 unique(resumen_2$siglas)
 ```
