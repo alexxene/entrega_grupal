@@ -603,6 +603,54 @@ ggplot(correlacion, aes(x = reorder(siglas, correlacion), y = correlacion)) +
 
 ```
 
+```{r}
+#Otra manera comparando la participación de los distintos años 
+
+#Calculamos la participación total por año, a nivel nacional 
+participacion_anual <- resumen |>
+  group_by(fecha) |>
+  summarise(participacion_total = sum(votos, na.rm = TRUE))
+
+media_votos_años <- mean(participacion_anual$participacion_total)
+
+#Clasificamos los años según si la participación ha sido más alta de lo normal, media o más baja
+participacion_anual <- participacion_anual |>
+  mutate(categoria_participacion = case_when(
+    participacion_total < media_votos_años ~ "Baja_participacion",
+    participacion_total >= media_votos_años ~ "Alta_participacion" ))
+
+#Calculamos los votos históricos por partido 
+totales_partido <- resumen |>
+  group_by(siglas) |>
+  summarise(votos_totales = sum(votos, na.rm = TRUE))  
+  
+
+#Participación relativa por partido y año
+participacion_partido <- resumen |>
+  group_by(fecha, siglas) |>
+  summarise(votos_partido = sum(votos, na.rm = TRUE), .groups = "drop") |>
+  left_join(participacion_anual, by = "fecha") |>
+  left_join(totales_partido, by = "siglas") |>
+  mutate(participacion_relativa = votos_partido / participacion_total)
+#en esta tabla tenemos votos_partido que son los votos de ese partido en esa elección
+  #participación_total es el total de votos de la elección de ese año, todos los votantes
+  #votos_totales son el total de votos que ha conseguido cada partido en todas las elecciones, suma todos los votos que ha tenido a lo largo de los años 
+  #participación_relativa es el total de votos del partido ese año entre el total de votos habidos en esas elecciones
+
+#Analizamos el beneficio por tipo de participación
+comparacion <- participacion_partido |>
+  filter(categoria_participacion %in% c("Baja_participacion", "Alta_participacion")) |>
+  group_by(siglas, categoria_participacion) |>
+  summarise(promedio_participacion = mean(participacion_relativa, na.rm = TRUE), .groups = "drop") |>
+  pivot_wider(names_from = categoria_participacion, values_from = promedio_participacion) |>
+  mutate(beneficio_baja = Baja_participacion - Alta_participacion) |> 
+  arrange(desc(beneficio_baja))
+# Con el beneficio_baja sacamos la diferencia de porcentaje de votos de cada partido que han tenido los años de elecciones con naja participación entre los años de alta participación
+# Los partidos donde beneficio_baja es positivo, significa que salen ganando cuando hay baja participación
+#Los partidos con beneficio_baja negativo, significa que pierden votos cuando la participación es alta en las elecciones
+```
+
+
 ## Pregunta_4 {background-image="fondo_diapos.png" background-size="cover"}
 
 -   ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que determinados partidos ganan en las zonas rurales?
@@ -837,11 +885,96 @@ Sugerencia: Añadir un gráfico interactivo como este donde los puntos son las p
 
 ## Pregunta_7 {background-image="fondo_diapos.png" background-size="cover"}
 
--   Nos dice algo sobre el resultado final de las elecciones que se hayan emitido más votos en la primera sesión que en la segunda? ¿Podemos afirmar que los votantes de un partido son más madrugadores que otros?
+-  Sabemos que en 2019 se realizaron 2 elecciones pero ¿hubo diferencias en el total de gente que asistió a votar?. ¿Que partidos ganaron votos en la segunda ronda y cuales salieron perdiendo?
+
 
 ```{r}
 
+# Filtrar solo las elecciones que ocurrieron en 2019
+eleccion_2019 <-resumen |> 
+  filter(year(fecha) == 2019)
+
+# Calculamos la participación total por elección, observamos que en la realizada en abril hay cerca de 2 millones más de votantes que en la de finales del mismo año
+participacion_2019 <- eleccion_2019 |> 
+  group_by(fecha) |> 
+  summarise(participacion_total = sum(votos, na.rm = TRUE)) |> 
+  arrange(fecha)
+
+print(participacion_2019)
+
+
+# Comparamos los votos de cada partido en las dos elecciones de 2019
+votos_2019 <- eleccion_2019 |> 
+  group_by(fecha, siglas) |> 
+  summarise(votos_totales = sum(votos, na.rm = TRUE), .groups = "drop") |> 
+  pivot_wider(names_from = fecha, values_from = votos_totales) |> 
+  mutate(diferencia_votos = 2019-11-01 - 2019-04-01) |> 
+  arrange(desc(diferencia_votos))
+
+#Esto nos devuelve una tabla con los votos de cada grupo de siglas, una columna con la primera elección y otra con la segunda. al final tenemos una tercera columna con la diferencia de votos entre elecciones, los positivos son los partidos que ganaron votos y los negativos los que perdieron electores
+print(votos_2019)
 ```
+
+```{r}
+#Ahora unos gráficos para obsrvar visualmente las diferencias entre sufragios
+max_part <- max(participacion_2019$participacion_total, na.rm = TRUE)
+
+ggplot(participacion_2019, aes(x = as.factor(fecha), y = participacion_total, fill = fecha)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  labs(title = "Participación total en las elecciones de 2019",
+       x = "Fecha de Elección",
+       y = "Total de Votantes") +
+  theme_minimal()+
+  scale_y_continuous(breaks = seq(0, max_part, by = 2e6), labels = scales::label_number(scale = 1e-6, suffix = "M"))
+  #scale_fill_manual(values = c("#1f77b4", "#ff7f0e"))  # Colores azul y naranja
+```
+
+```{r}
+# Gráfico de diferencias de votos por partido
+max_dif <- max(abs(votos_2019$diferencia_votos), na.rm = TRUE)
+
+ggplot(votos_2019, aes(x = reorder(siglas, diferencia_votos), y = diferencia_votos, fill = diferencia_votos > 0)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  labs(title = "Diferencia de votos por partido entre abril y noviembre de 2019",
+       x = "Partido",
+       y = "Diferencia de Votos") +
+  theme_minimal() +
+  scale_fill_manual(values = c("red", "green")) +  # Rojo para pérdidas, verde para ganancias
+  scale_y_continuous(
+    breaks = seq(-max_dif, max_dif, by = 500000),  # Intervalos de 2M
+    labels = scales::label_number(scale = 1e-6, suffix = "M")  # Convertir a millones
+  ) +
+  coord_flip()  # Para que el gráfico sea horizontal
+```
+
+```{r}
+#Gráfico superpuesto con los votos en columnas de cada partido
+votos_2019_long <- votos_2019 |> 
+  pivot_longer(cols = -c(siglas, diferencia_votos),  # Mantener siglas y diferencia_votos, convertir las fechas
+               names_to = "fecha",
+               values_to = "votos_totales") |> 
+  group_by(siglas) |> 
+  summarise(total_votos = sum(votos_totales, na.rm = TRUE)) |> 
+  right_join(votos_2019_long, by = "siglas") |> 
+  mutate(siglas = fct_reorder(siglas, total_votos, .desc = TRUE)) 
+
+
+ggplot(votos_2019_long, aes(x = siglas, y = votos_totales, fill = as.factor(fecha))) +
+  geom_col(position = "identity", alpha = 0.6) +  # Superponer barras con transparencia
+  labs(title = "Comparación de votos por partido en las elecciones de 2019",
+       x = "Partido",
+       y = "Total de Votos",
+       fill = "Fecha de elección") +
+  theme_minimal() +
+  scale_fill_manual(values = c("#1f77b4", "#ff7f0e")) +  # Azul para abril, naranja para noviembre
+  scale_y_continuous(
+    labels = scales::label_number(scale = 1e-6, suffix = "M")  # Convertir a millones
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+#Este gráfico funcionaba pero al subirlo no me deja hacer run de la caja de código
+
+```
+
 
 ------------------------------------------------------------------------
 
