@@ -909,8 +909,200 @@ Se suele decir que la población de Zaragoza es una muestra representativa de la
 
 ### Pregunta_10
 
-Serían los resultados obtenidos similares a los reales si nos quedáramos solo con los votos de la sesión1 (por la mañana) o los de la sesión 2 (por la tarde)?
+Determinar el número de escaños que recibirá cada provincia. ¿Cómo es el reparto de escaños en las provincias? ¿Y en la capital?
 
 ```{r}
+# DETERMINAMOS CUÁNTOS ESCAÑOS LE CORRESPONDEN A CADA PROVINCIA
 
+# Escribimos todas las provincias de España (52)
+
+provincias <- c(
+  "Álava", "Albacete", "Alicante", "Almería", "Asturias", "Ávila",
+  "Badajoz", "Barcelona", "Burgos", "Cáceres", "Cádiz", "Cantabria",
+  "Castellón", "Ciudad Real", "Córdoba", "La Coruña", "Cuenca",
+  "Gerona", "Granada", "Guadalajara", "Guipúzcoa", "Huelva", "Huesca",
+  "Islas Baleares", "Jaén", "León", "Lérida", "Lugo", "Madrid", "Málaga",
+  "Murcia", "Navarra", "Orense", "Palencia", "Las Palmas", "Pontevedra",
+  "La Rioja", "Salamanca", "Segovia", "Sevilla", "Soria", "Tarragona",
+  "Santa Cruz de Tenerife", "Teruel", "Toledo", "Valencia", "Valladolid",
+  "Vizcaya", "Zamora", "Zaragoza", "Ceuta", "Melilla"
+)
+
+# Sacamos el código de provincia de la variable "id_municipio" y a cada código le asignamos el nombre de su provincia. (Los códigos son obtenidos desde el INE)
+
+resumen_provincias <- 
+  resumen |> 
+  mutate(id_provincia = substr(id_municipio, 3, 4)) |> 
+  relocate(id_provincia, .after = id_municipio) |> 
+  mutate(provincia = case_when(
+    id_provincia == "01" ~ "Álaba",
+    id_provincia == "02" ~ "Albacete",
+    id_provincia == "03" ~ "Alicante",
+    id_provincia == "04" ~ "Almería",
+    id_provincia == "05" ~ "Ávila",
+    id_provincia == "06" ~ "Badajoz",
+    id_provincia == "07" ~ "Belears, Illes",
+    id_provincia == "08" ~ "Barcelona",
+    id_provincia == "09" ~ "Burgos",
+    id_provincia == "10" ~ "Cáceres",
+    id_provincia == "11" ~ "Cádiz",
+    id_provincia == "12" ~ "Castellón",
+    id_provincia == "13" ~ "Ciudad Real",
+    id_provincia == "14" ~ "Córdoba",
+    id_provincia == "15" ~ "Coruña, A",
+    id_provincia == "16" ~ "Cuenca",
+    id_provincia == "17" ~ "Girona",
+    id_provincia == "18" ~ "Granada",
+    id_provincia == "19" ~ "Guadalajara",
+    id_provincia == "20" ~ "Gipuzkoa",
+    id_provincia == "21" ~ "Huelva",
+    id_provincia == "22" ~ "Huesca",
+    id_provincia == "23" ~ "Jaén",
+    id_provincia == "24" ~ "León",
+    id_provincia == "25" ~ "Lleida",
+    id_provincia == "26" ~ "Rioja, La",
+    id_provincia == "27" ~ "Lugo",
+    id_provincia == "28" ~ "Madrid",
+    id_provincia == "29" ~ "Málaga",
+    id_provincia == "30" ~ "Murcia",
+    id_provincia == "31" ~ "Navarra",
+    id_provincia == "32" ~ "Ourense",
+    id_provincia == "33" ~ "Asturias",
+    id_provincia == "34" ~ "Palencia",
+    id_provincia == "35" ~ "Palmas, Las",
+    id_provincia == "36" ~ "Pontevedra",
+    id_provincia == "37" ~ "Salamanca",
+    id_provincia == "38" ~ "Santa Cruz De Tenerife",
+    id_provincia == "39" ~ "Cantabria",
+    id_provincia == "40" ~ "Segovia",
+    id_provincia == "41" ~ "Sevilla",
+    id_provincia == "42" ~ "Soria",
+    id_provincia == "43" ~ "Tarragona",
+    id_provincia == "44" ~ "Teruel",
+    id_provincia == "45" ~ "Toledo",
+    id_provincia == "46" ~ "Valencia/València",
+    id_provincia == "47" ~ "Valladolid",
+    id_provincia == "48" ~ "Bizkaia",
+    id_provincia == "49" ~ "Zamora",
+    id_provincia == "50" ~ "Zaragoza",
+    id_provincia == "51" ~ "Ceuta",
+    id_provincia == "52" ~ "Melilla"
+  )) |> 
+  relocate(provincia, .after = id_provincia)
+
+# Vamos a calcular cuántos escaños debe tener cada provincia. Esto es un simple cálculo el cual consiste en dividir el número de personas votantes que viven en cada provincia ("censo" por provincia) entre el número de personas votantes en España ("censo" del país). Ese número hay que multiplicarlo por 248 debido a que el número máximo de escaños son 350 y cada provincia de las 52 que hay debe tener mínimo 2 escaños (excepto Ceuta y Melilla que en vez de 2 escaños es 1 escaño). Entonces serían 350 - 50*2 -2*1 = 248
+# Redondeamos el número que nos salga para tener los escaños en números naturales
+
+Escaños_provincia <-
+  resumen_provincias |> 
+  group_by(fecha, provincia) |> 
+  summarise(Provincia_pob = sum(unique(censo)), 
+            .groups = "drop") |> 
+  mutate(Total_pob = sum(Provincia_pob),
+         n_escaños = (Provincia_pob/Total_pob)*248,
+         n_escaños = round(n_escaños),
+         .by = fecha) |> 
+  mutate(n_escaños = case_when(
+    provincia == "Ceuta" ~ n_escaños + 1,
+    provincia == "Melilla" ~ n_escaños + 1,
+    TRUE ~ n_escaños + 2
+  ))
+
+# Para que un partido tenga la opción de poder obtener un escaño en una provincia, los votos de ese partido en esa provincia deben de ser superiores al 5% de los votos válidos (votos + votos en blanco) de esa provincia.
+
+# En esta tabla se enseña el umbral de votos mínimo para cada fecha en cada provincia
+Umbral_minimo <-
+  resumen_provincias |> 
+  group_by(fecha, provincia) |> 
+  summarise(Votos_validos = 
+              sum(unique(votos_candidaturas))
+            + sum(unique(votos_blancos))) |> 
+  mutate(minimo_votos = Votos_validos * 0.05,
+         minimo_votos = round(minimo_votos)) |> 
+  ungroup()
+
+# En esta tabla se muestran los votos de cada partido en cada provincia para cada fecha
+Votos_partido <- 
+  resumen_provincias |> 
+  group_by(fecha, provincia, siglas) |> 
+  summarise(votos = sum(votos),
+            .groups = "drop")
+
+# Unimos estas últimas dos tablas y añadimos un filtro, lo que nos da con los partidos con derecho a escaños en cada provincia. (Los partidos con derecho a escaños serán entonces los que superen el mínimo de votos de cada provincia)
+Partidos_con_derecho_escaños <-
+  Umbral_minimo |> 
+  inner_join(Votos_partido)|> 
+  group_by(fecha, siglas, provincia) |> 
+  filter(votos >= unique(minimo_votos))
+
+
+# Para finalizar, tenemos que unir la primera tabla (Escaños_provincia) con la última (Partidos_con_derecho_escaños) para tener, en una misma tabla, los datos que nos interesan: Nº de escaños de cada provincia, nombre de la provincia, votos de los partidos de cada provincia, la fecha y las siglas de cada partido
+Escaños_provincia_2 <-
+  Escaños_provincia |> 
+  left_join(Partidos_con_derecho_escaños) |> 
+  select(fecha, provincia, n_escaños, siglas, votos)
+```
+
+```{r}
+# CALCULAMOS EL REPARTO DE ESCAÑOS PARA CADA PROVINCIA CON LA LEY D'HONT
+
+library(dplyr)
+library(purrr)
+
+# Obtener todas las provincias y fechas únicas de la tabla "Escaños_provincia_2"
+provincias <- unique(Escaños_provincia_2$provincia)
+fechas <- unique(Escaños_provincia_2$fecha)
+
+# Función de Ley D'Hondt
+dhont <- function(votos, n_escaños) {
+  divisores <- 1:n_escaños
+  tabla <- data.frame(
+    Partido = rep(names(votos), each = n_escaños),
+    Cociente = unlist(lapply(votos, function(v) v / divisores))
+  )
+  tabla <- tabla[order(-tabla$Cociente), ]
+  tabla <- head(tabla, n_escaños)
+  resultados <- as.data.frame(table(tabla$Partido))
+  colnames(resultados) <- c("Partido", "Escaños")
+  return(resultados)
+}
+
+# Función para calcular cuántos escaños obtiene cada partido por fecha y provincia
+calcular_escaños <- function(fecha, provincia, data) {
+  # Filtrar datos para la fecha y provincia
+  datos_filtrados <- data  |> 
+    filter(fecha == !!fecha, provincia == !!provincia)
+  
+  if (nrow(datos_filtrados) == 0) {
+    return(NULL) # Retornar NULL si no hay datos para esta combinación
+  }
+  
+  # Vector de votos y número de escaños
+  votos <- setNames(datos_filtrados$votos, datos_filtrados$siglas)
+  n_escaños <- unique(datos_filtrados$n_escaños)
+  
+  if (length(n_escaños) != 1) {
+    stop(paste("Número de escaños inconsistente para la fecha", fecha, "y provincia", provincia))
+  }
+  
+  # Aplicar la Ley D'Hondt
+  resultados <- dhont(votos, n_escaños)
+  resultados$Fecha <- fecha
+  resultados$Provincia <- provincia
+  return(resultados)
+}
+
+# Aplicar la función a todas las provincias y fechas
+resultados_todos <- expand.grid(fechas, provincias) |>
+  rename(Fecha = Var1, Provincia = Var2) |>
+  pmap_dfr(~ calcular_escaños(..1, ..2, Escaños_provincia_2)) |> 
+  relocate(Fecha, .before = everything()) |> 
+  relocate(Provincia, .after = Fecha)
+
+# Ver los resultados
+resultados_todos
+
+# Si solo queremos los resultados de Madrid
+resultados_todos |> 
+  filter(Provincia == "Madrid")
 ```
