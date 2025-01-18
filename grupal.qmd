@@ -831,6 +831,27 @@ Sugerencia: Añadir un gráfico interactivo como este donde los puntos son las p
 
 ```{r}
 
+# Paso 1: Calcular el error absoluto para cada encuesta
+datos_combinados <- casas_encuestadoras |> 
+  rename(siglas = partidos) |> 
+  inner_join(resultados, by = c("fecha", "siglas")) |> 
+  mutate(error_absoluto = abs(porcentaje_estimado - Porcentaje_real))
+
+# Paso 2: Calcular el error promedio por casa encuestadora
+error_por_casa <- datos_combinados |> 
+  group_by(pollster) |> 
+  summarise(error_medio = mean(error_absoluto, na.rm = TRUE)) |> 
+  arrange(error_medio)
+
+# Paso 3: Identificar la casa encuestadora más precisa y la que más se desvió
+casa_mas_precisa <- error_por_casa |> slice_min(error_medio)
+casa_mas_desviada <- error_por_casa |> slice_max(error_medio)
+
+# Visualización de resultados
+list(Error_Promedio_Por_Casa = error_por_casa, Casa_Mas_Precisa = casa_mas_precisa,Casa_Mas_Desviada = casa_mas_desviada)
+
+
+
 ```
 
 ------------------------------------------------------------------------
