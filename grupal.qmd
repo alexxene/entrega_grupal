@@ -1,14 +1,10 @@
 ---
 title: "Entrega grupal"
-author: "Iratxe Valero Ochoa (DNI:02724987Q), 
-        Ángela García Muñoz (DNI:01840008P),
-        Javier Ruiz (DNI:25449733A), 
-        Javier Muñoz Zacarés (DNI:55136745H),
-        Xin Yue Huang (NIE:Y8908945R),
-        Alexandra Mihaela Ene (NIE: Y3510242L),
-        María Belén Lavanda Rocano (DNI:02723226A) "
+title-slide-attributes: 
+  data-background-image: portada.png
 format:
   revealjs:
+    code-block-height: 850px
     slide-number: true
     theme: [style.scss]
     embed-resources: true
@@ -30,6 +26,7 @@ library(ggplot2)
 library(patchwork)
 library(plotly)
 library(mapSpain)
+
 ```
 
 ------------------------------------------------------------------------
@@ -89,7 +86,7 @@ surveys <-
 
 ##  {background-image="fondo_diapos.png" background-size="cover"}
 
-Seguimos con los datos electorales
+[Seguimos con los datos electorales]{style="color:#A259FA;"}
 
 ```{r}
 
@@ -126,17 +123,49 @@ election_data <-
   select(-c(anno,mes))
 ```
 
-Convertimos `election_data` en tidydata
+. . .
 
+\-
+
+::: columns
+::: {.column width="50%"}
 ```{r}
+#Convertimos a tidy data:
+
 election_data <- 
   election_data |> 
   pivot_longer(
-    cols = "BERDEAK-LOS VERDES":"COALICIÓN POR MELILLA", 
+    cols = "BERDEAK-LOS VERDES":
+      "COALICIÓN POR MELILLA", 
     names_to = "partidos", 
     values_to = "votos", 
     values_drop_na = TRUE )
+
 ```
+:::
+
+::: {.column width="50%"}
+```{r}
+
+#partidos y sus colores:
+
+colores = c("PP"="#1A4CA0",
+              "UP"="#542C85",
+              "PSOE"="#D50000",
+              "PNV"="#018B3F",
+              "Cs"="#EB6109",
+              "ERC"="#FFCD00",
+              "CIU"="#1E3A5F",
+              "MP"="#0fddc4",
+              "VOX"="#1D7A2A",
+              "BNG"="#68abde",
+              "EH-BILDU"="#4C9A2A",
+              "OTROS"="grey",
+              "NA"="black")
+
+```
+:::
+:::
 
 ------------------------------------------------------------------------
 
@@ -144,11 +173,11 @@ election_data <-
 
 Utilizamos la variable **partidos** para agrupar todos ellos en solo **12**:
 
--   *"PP" , "UP", "PSOE" , "PNV" , "Cs" , "ERC" , "CIU"*
-
--   *"MP" , "VOX", "BNG", "EH-BILDU" ,"OTROS"*
+-   *"PP" , "UP", "PSOE" , "PNV" , "Cs" , "ERC" , "CIU", "MP" , "VOX", "BNG", "EH-BILDU" ,"OTROS"*
 
 #### Manera 1
+
+\-
 
 ```{r}
 resumen <- 
@@ -167,7 +196,7 @@ resumen <-
   str_detect(partidos, "CONVERGENCIA I| CONVERGENCIA i|CONVERGÈNCIA|UNIÓ D") ~ "CIU", 
   TRUE ~ "OTROS"
 )) 
-unique(resumen$siglas)
+
 ```
 
 ------------------------------------------------------------------------
@@ -175,6 +204,8 @@ unique(resumen$siglas)
 ##  {background-image="fondo_diapos.png" background-size="cover"}
 
 #### Manera 2
+
+\-
 
 ```{r}
 #Primero tenemos que filtrar el dataset abbrev ya que hay partidos que aceptan múltiples siglas 
@@ -213,14 +244,11 @@ resumen_2 <-
      str_detect(partidos, regex("ESQUERRA REPUBLICANA/CATALUNYA SÍ|ESQUERRA REPUBLICANA$", ignore_case = TRUE)) ~ 'ERC',   
      TRUE ~ 'OTROS'))
 
-unique(resumen_2$siglas)
 ```
 
 ------------------------------------------------------------------------
 
-##  {background-image="fondo_diapos.png" background-size="cover"}
-
-Comprobamos si los resultados obtenidos de las 2 maneras son similares:
+## Comprobamos si los resultados obtenidos de las 2 maneras son similares: {background-image="fondo_diapos.png" background-size="cover"}
 
 ```{r}
 resumen_agg <- 
@@ -241,43 +269,47 @@ resumen_total<-
   filter(dif!=0) |> 
   arrange(desc(dif))
 
-resumen_total
+view(resumen)
 ```
 
 ------------------------------------------------------------------------
 
 ##  {background-image="fondo_diapos.png" background-size="cover"}
 
-Hemos descubierto que las diferencias principales están en en CIU y UP en 2015. `Resumen` le da 630.000 votos a CIU, pero `resumen2` solo 65.000, según la web del ministerio del interior obtuvieron 567.000 (ver fichero Elecciones.xls en el repositorio de Github).
+![](resumen_total.png){width="600"}
 
-En cuanto a los votos en 2015 para UP, si se suman los de Podemos, Coalición "En Comú Podem” (En Comú), Coalición “Unidad Popular” y Coalición “Compromís - Podemos - És el Moment”, el ministerio de interior dice que obtuvieron 5.700.000 votos, muy cercano al cálculo de `resumen`, mientras que `resumen2` se queda 500.00 votos corto.
+::: incremental
+-   Hemos descubierto que las diferencias principales están en <mark>CIU</mark> y <mark>UP</mark> en 2015. `Resumen` le da 630.000 votos a CIU, pero `resumen2` solo 65.000, según la web del ministerio del interior obtuvieron 567.000 [^1]
+:::
 
-Y parecido ocurre con la agrupación para 2016 para UP: `resumen` 4.700.000 vs `resumen2` 4.200.000 vs ministerio 5.000.000.
+[^1]: ver fichero Elecciones.xls en el repositorio de Github
 
-Por tanto creemos que la agrupación `resumen` es más precisa y usaremos esa agrupación para el resto del trabajo.
+------------------------------------------------------------------------
+
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
+::: incremental
+-   En cuanto a los votos en 2015 para <mark>UP</mark>, si se suman los de Podemos, Coalición "En Comú Podem”, Coalición “Unidad Popular” y Coalición “Compromís - Podemos - És el Moment”, el ministerio de interior dice que obtuvieron 5.700.000 votos, muy cercano al cálculo de `resumen`, mientras que `resumen2` se queda 500.00 votos corto.
+
+-   Y parecido ocurre para el año 2016 para <mark>UP</mark>: `resumen` 4.700.000 vs `resumen2` 4.200.000 vs ministerio 5.000.000.
+
+-   Por tanto creemos que la agrupación `resumen` es más precisa y es la que usaremos para el resto del trabajo.
+:::
+
+. . .
+
+![](thumbs_up.png){fig-align="center" width="140"}
 
 ------------------------------------------------------------------------
 
 ## Pregunta_0 {background-image="fondo_diapos.png" background-size="cover"}
 
+::: {.fragment .fade-up}
 Mostrar un gráfico con los resultados electorales para cada año.
 
 Vamos a hacerlo con una función para que acumule en orden de votos los gráficos según la fecha porque hemos encontrado muchos problemas para que reordenara correctamente haciéndolo de manera agregada.
 
 ```{r}
-colores = c("PP"="#1A4CA0",
-              "UP"="#542C85",
-              "PSOE"="#D50000",
-              "PNV"="#018B3F",
-              "Cs"="#EB6109",
-              "ERC"="#FFCD00",
-              "CIU"="#1E3A5F",
-              "MP"="#0fddc4",
-              "VOX"="#1D7A2A",
-              "BNG"="#68abde",
-              "EH-BILDU"="#4C9A2A",
-              "OTROS"="grey",
-              "NA"="black")
 
 # Ordenamos los datos por año y votos descendentes
 resumen_agg <- 
@@ -302,10 +334,11 @@ resumen_agg_pct <-
   mutate(siglas = factor(siglas, levels = siglas)) |>  
   ungroup()
 ```
+:::
 
 ------------------------------------------------------------------------
 
-##  {background-image="fondo_diapos.png" background-size="cover"}
+## Pregunta_0 {background-image="fondo_diapos.png" background-size="cover"}
 
 ```{r}
 # Función para generar gráficos individuales por fecha
@@ -402,7 +435,6 @@ grafico_final <-
 ##  {background-image="fondo_diapos.png" background-size="cover"}
 
 ```{r}
-# Mostrar el gráfico combinado
 grafico_final
 ```
 
@@ -481,12 +513,17 @@ segundos <-
   arrange(fecha, desc(total_votos)) |>
   ungroup()
 
-segundos
+
 ```
+
+![](Pregunta2.png){fig-align="center" width="496"}
+
+------------------------------------------------------------------------
+
+##  {background-image="fondo_diapos.png" background-size="cover"}
 
 ```{r}
 # manera 1
-
 primeros_segundos <- 
   segundos |> 
   group_by(fecha) |> 
@@ -499,39 +536,54 @@ primeros_segundos <-
     votos_2 = total_votos[rank == 2]  # Número de votos del segundo lugar
   ) |> 
   ungroup()
-primeros_segundos
+```
 
-# Filtrar cuando el primer lugar es PSOE
+. . .
+
+\-
+
+::: columns
+::: {.column width="50%"}
+```{r}
+# Filtrar cuando el primero es PSOE
 segundo_cuando_psoe <- 
   primeros_segundos |> 
   filter(primero == "PSOE")
-segundo_cuando_psoe
+```
+:::
 
-# Filtrar cuando el primer lugar es PP
+::: {.column width="50%"}
+```{r}
+# Filtrar cuando el primero es PP
 segundo_cuando_pp <- 
   primeros_segundos |> 
   filter(primero == "PP")
-segundo_cuando_pp
-
 ```
+:::
+:::
+
+![](pp_y_psoe.png){fig-align="center"}
 
 ------------------------------------------------------------------------
 
 ##  {background-image="fondo_diapos.png" background-size="cover"}
 
+::: columns
+::: {.column width="35%"}
 ```{r}
 # manera 2
-
 # Reordenar los niveles de 'siglas' en base a 'total_votos' (de mayor a menor)
 
 segundos <- segundos |> 
   group_by(fecha) |> 
   mutate(siglas = fct_reorder(siglas, total_votos, .desc = TRUE)) |> 
   ungroup()
+```
+:::
 
-print(levels(segundos$siglas))
-
-ggplot(segundos, 
+::: {.column width="65%"}
+```{r}
+resultado <- ggplot(segundos, 
        aes(x = siglas, 
            y = total_votos, 
            fill = siglas)) +
@@ -548,9 +600,9 @@ ggplot(segundos,
         axis.title.x = element_blank(),
         legend.position = "bottom") +
   facet_wrap(~fecha, nrow = 1, scales = "free_x")
-# PP fue el segundo cuando el primero fue el PSOE
-# PSOE o UP fueron el segundo cuando el primero fue el PP
 ```
+:::
+:::
 
 ------------------------------------------------------------------------
 
@@ -579,29 +631,37 @@ correlacion <- participacion |>
 #Complete.obs se ocupa de los valores NA, no se si hace falta pero por si acaso lo dejo puesto
 #Deberían salir nº entre -1 y 1, si está por encima de 0 la correlación es positiva lo que significa que saldría beneficiado si la participación es alta, y al revés con los resultados negativos
 
-
 #Un coeficiente de correlación POSITIVO significa que, a medida que AUMENTA la participación, la proporción de votos de ese partido tiende a AUMENTAR
 
 #Correlación positiva → Beneficio con alta participación.
 #Correlación negativa → Beneficio con baja participación.
-
-
 
 #Estamos haciendo la correlación entre estas dos cosas
 #Participación total: el total de votos emitidos en un municipio
 #Proporción de votos de un partido (participacion relativa): los votos de un partido como fracción de los votos totales.
 
 
+```
+
+------------------------------------------------------------------------
+
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
+```{r}
+
 # Visualización de resultados con un gráfico de barras
 ggplot(correlacion, aes(x = reorder(siglas, correlacion), y = correlacion)) +
-  geom_col(fill = "green") +
+  geom_col(fill = "#B485EC") +
   labs(
     title = "Correlación entre participación y votos por partido",
     x = "Partido",
     y = "Correlación"
-  )  #poner una leyenda con la explicación de cor positiva y negativa y lo que significan con relacion a los datos y el enunciado
+  )+
+  theme_minimal(base_family = "Rockwell")  #poner una leyenda con la explicación de cor positiva y negativa y lo que significan con relacion a los datos y el enunciado
 
 ```
+
+------------------------------------------------------------------------
 
 ## Pregunta_4 {background-image="fondo_diapos.png" background-size="cover"}
 
@@ -625,17 +685,18 @@ print(paste("Correlación entre censo y votos totales:",
 # Visualizar la correlación
 ggplot(relacion_censo_votos, aes(x = censo, y = Total_votos)) +
   geom_point(alpha = 0.7) +
-  geom_smooth(method = "lm", color = "blue", se = FALSE) +
+  geom_smooth(method = "lm", color = "#1E96C6", se = FALSE) +
   labs(
     title = "Relación entre censo y votos totales",
     x = "Censo (personas censadas)",
     y = "Votos totales"
   ) +
-  theme_minimal()
+  theme_minimal(base_family = "Rockwell")
 
 ```
 
 ```{r}
+#| code-fold: true
 # ANALIZANDO SI CIERTOS PARTIDOS GANAN MÁS EN ZONAS RURALES QUE EN ZONAS URBANAS
 # Creamos una tabla en donde guardamos el tipo de zona según el censo:  Rural o Urbano
 rurales_urbanas <-
@@ -728,10 +789,10 @@ zona_2019 <-
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
   theme(plot.title = element_text(size = 11))
 
+plotly::ggplotly(zona_2008)
+plotly::ggplotly(zona_2016)
+plotly::ggplotly(zona_2019)
 
-ggplotly(zona_2008)
-ggplotly(zona_2016)
-ggplotly(zona_2019)
 ```
 
 ------------------------------------------------------------------------
