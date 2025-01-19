@@ -128,7 +128,7 @@ election_data <-
 
 \-
 
-::: columns
+::::: columns
 ::: {.column width="50%"}
 ```{r}
 #Convertimos a tidy data:
@@ -166,7 +166,7 @@ colores = c("PP"="#1A4CA0",
 
 ```
 :::
-:::
+:::::
 
 ------------------------------------------------------------------------
 
@@ -465,11 +465,12 @@ grafico <- ggplot(resumen_agg_pct, aes(x = fecha_formateada, y = porcentaje_voto
     x = NULL,
     y = NULL
   ) +
-  theme_minimal() +
+  theme_minimal(base_family = "RockWell") +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
     panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank()
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(size = 18,face = "bold", hjust = 0.5)
   )
 
 ggplotly(grafico)
@@ -553,7 +554,7 @@ primeros_segundos <-
 
 \-
 
-::: columns
+::::: columns
 ::: {.column width="50%"}
 ```{r}
 # Filtrar cuando el primero es PSOE
@@ -571,7 +572,7 @@ segundo_cuando_pp <-
   filter(primero == "PP")
 ```
 :::
-:::
+:::::
 
 ![](pp_y_psoe.png){fig-align="center"}
 
@@ -758,7 +759,7 @@ comparacion <- participacion_partido |>
 
 -   ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que determinados partidos ganan en las zonas rurales?
 
-::: columns
+::::: columns
 ::: {.column width="50%"}
 ```{r}
 #| code-fold: true
@@ -800,7 +801,7 @@ ggplot(relacion_censo_votos,
         plot.subtitle = element_text(hjust = 0.5))
 ```
 :::
-:::
+:::::
 
 ------------------------------------------------------------------------
 
@@ -1076,7 +1077,7 @@ lista <- list(Error_Promedio_Por_Casa = error_por_casa, Casa_Mas_Precisa = casa_
 -   Sabemos que en 2019 se realizaron 2 elecciones pero ¿hubo diferencias en el total de gente que asistió a votar?. ¿Que partidos ganaron votos en la segunda ronda y cuales salieron perdiendo?
 :::
 
-::: columns
+::::: columns
 ::: {.column width="50%"}
 ```{r}
 #| code-fold: true
@@ -1104,7 +1105,7 @@ votos_2019 <- eleccion_2019 |>
 #Esto nos devuelve una tabla con los votos de cada grupo de siglas, una columna con la primera elección y otra con la segunda. al final tenemos una tercera columna con la diferencia de votos entre elecciones, los positivos son los partidos que ganaron votos y los negativos los que perdieron electores
 ```
 :::
-:::
+:::::
 
 ![](images/Pregunta7.png){fig-align="center" width="606"}
 
@@ -1219,7 +1220,7 @@ ggplot(votos_2019_long,
 Elaborar mapas de España con ganadores y participacion por provincia y ccaa
 :::
 
-::: columns
+::::: columns
 ::: {.column width="50%"}
 ```{r}
 totales_election_data <- 
@@ -1249,7 +1250,7 @@ ganadores_todos <-
   )
 ```
 :::
-:::
+:::::
 
 \-
 
@@ -1360,11 +1361,12 @@ gg<- ggplot(tabla_ajustada, aes(x = factor(fecha_formateada), y = dif, fill = si
     fill = ""
   ) +
   scale_fill_manual(values = colores) +  # Colores personalizados
-  theme_minimal() +
+  theme_minimal(base_family = "Rockwell") +
 theme(
 axis.text.x = element_text(angle = 45, hjust = 1),  # Rotar etiquetas del eje X
 strip.text = element_text(size = 10),              # Tamaño de los títulos en los paneles
-panel.spacing = unit(1, "lines")                   # Espaciado entre paneles
+panel.spacing = unit(1, "lines"),                   # Espaciado entre paneles
+plot.title = element_text(size = 18,face = "bold", hjust = 0.5)
 )
 
 
