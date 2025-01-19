@@ -54,8 +54,7 @@ abbrev <- read_csv(file = "./data/siglas.csv")
 
 Nos ocupamos primero de las encuestas:
 
-Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2008.
-Será necesario hacer un pivot_table como en elecciones
+Eliminar columnas de surveys sin info + encuestas a pie de urna y anteriores a 2008. Será necesario hacer un pivot_table como en elecciones
 
 ```{r}
 surveys <- 
@@ -67,7 +66,8 @@ surveys <-
   filter(date_elec>'2008-1-1')
 ```
 
----------------------------------------------------------------
+------------------------------------------------------------------------
+
 Seguimos con los datos electorales
 
 ```{r}
@@ -97,13 +97,11 @@ election_data <- election_data|>
 #usamos lubridate
 election_data<-election_data |> mutate(fecha=dmy(fecha)) |> select(-c(anno,mes))
 
-election_data |> distinct(fecha)
-```
-
-```{r}
+#convertimos los datos a tidy
 election_data <- 
   election_data |> 
   pivot_longer(cols = "BERDEAK-LOS VERDES":"COALICIÓN POR MELILLA", names_to = "partidos", values_to = "votos", values_drop_na = TRUE )
+```
 
 ------------------------------------------------------------------------
 
@@ -119,7 +117,7 @@ resumen <-
   str_detect(partidos, "PP|PARTIDO POPULAR|PARTIT POPULAR") ~ "PP",
   str_detect(partidos, "PNV|PARTIDO NACIONALISTA VASCO") ~ "PNV",
   str_detect(partidos, "PSOE|PSC|PARTIDO SOCIALISTA|PARTIT SOCIALISTA|PARTIT DELS SOCIALISTES |PARTIDO DOS SOCIALISTA") ~ "PSOE",
-  str_detect(partidos, "MAS PAÍS") ~ "MP",
+  str_detect(partidos, "MÁS PAÍS") ~ "MP",
   str_detect(partidos, "VOX") ~ "VOX",
   str_detect(partidos, "AMAIUR|ARALAR|EUSKO|EUSKAL HERRI|BILDU") ~ "EH-BILDU",
   str_detect(partidos, "ERC|ESQUERRA REPUBLICANA DE C|ESQUERRA REPUBLICANA$|ESQUERRA REPUBLICANA/") ~ "ERC",
@@ -134,6 +132,7 @@ unique(resumen$siglas)
 ```
 
 ```{r}
+
 # manera 2
 
 #Primero tenemos que filtrar el dataset abbrev ya que hay partidos que aceptan múltiples siglas 
@@ -182,7 +181,6 @@ Comprobamos si los resultados obtenidos de las 2 maneras son similares:
 
 ```{r}
 
-
 resumen_agg <- resumen |> 
   group_by(siglas,fecha) |> 
   summarise(total_votos_resumen = sum(votos, na.rm = TRUE),.groups = "drop")
@@ -198,12 +196,12 @@ resumen_total<-resumen_agg |>
   filter(dif!=0) |> 
   arrange(desc(dif))
 
-(resumen_total)
-
+resumen_total
 ```
 
-Hemos descubierto que las diferencias principales están en en CIU y UP en 2015.
-Resumen le da 630.000 votos a CIU, pero resumen2 solo 65.000, según la web del ministerio del interior obtuvieron 567.000 (ver fichero Elecciones.xls en el repositorio de Github).
+------------------------------------------------------------------------
+
+Hemos descubierto que las diferencias principales están en en CIU y UP en 2015. Resumen le da 630.000 votos a CIU, pero resumen2 solo 65.000, según la web del ministerio del interior obtuvieron 567.000 (ver fichero Elecciones.xls en el repositorio de Github).
 
 En cuanto a los votos en 2015 para UP, si se suman los de Podemos, Coalición "En Comú Podem” (En Comú), Coalición “Unidad Popular” y Coalición “Compromís - Podemos - És el Moment”, el ministerio de interior dice que obtuvieron 5.700.000 votos, muy cercano al cálculo de resumen, mientras que resumen2 se queda 500.00 votos corto.
 
@@ -214,11 +212,12 @@ Por tanto creemos que la agrupación resumen es más precisa y usaremos esa agru
 ------------------------------------------------------------------------
 
 ### Pregunta 0. Mostrar un gráfico con los resultados electorales para cada año.
+
 Vamos a hacerlo con una función para que acumule en orden de votos los gráficos según la fecha porque hemos encontrado muchos problemas para que reordenara correctamente haciéndolo de manera agregada.
 
 ```{r}
 colores = c("PP"="#1A4CA0",
-              "UP"="#542C85",
+              "UP"="#9B6DC2",
               "PSOE"="#D50000",
               "PNV"="#018B3F",
               "Cs"="#EB6109",
@@ -237,123 +236,149 @@ colores = c("PP"="#1A4CA0",
 resumen_agg <- resumen_agg |> 
   arrange(fecha, desc(total_votos_resumen))
 
-# Calcular el porcentaje de votos para cada partido en cada año
+# Calculamos el porcentaje de votos para cada partido en cada año
 resumen_agg_pct <- resumen_agg |> 
   group_by(fecha) |> 
   mutate(
-    total_votos_fecha = sum(total_votos_resumen),  # Calcular el total de votos por año
-    porcentaje_votos = (total_votos_resumen / total_votos_fecha) * 100  # Calcular el porcentaje
+    total_votos_fecha = sum(total_votos_resumen),
+    porcentaje_votos = (total_votos_resumen / total_votos_fecha) * 100 
   ) |>
   ungroup()
 
-# Reordenamos los partidos dentro de cada año según el porcentaje de votos
-resumen_agg_pct <- resumen_agg_pct |> 
-  group_by(fecha) |> 
-  arrange(desc(porcentaje_votos)) |>  
-  mutate(siglas = factor(siglas, levels = siglas)) |>  
-  ungroup()
-
-(resumen_agg_pct)
-
 ```
 
--------------------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r}
 
 # Función para generar gráficos individuales por fecha
 generar_graficos <- function(datos, colores) {
-  # Crear una lista vacía para almacenar los gráficos
+  # Creamos una lista vacía para almacenar los gráficos
   lista_graficos <- list()
   
-  # Obtener las fechas únicas
-  fechas_unicas <- unique(datos$fecha)
+  # Obtenermos y ordenamoslas fechas únicas
+  fechas_unicas <- sort(unique(datos$fecha))
   
-  # Iterar sobre cada fecha
+  # Iteramos sobre cada fecha
   for (fecha_actual in fechas_unicas) {
-    # Filtrar los datos para la fecha actual
+    # Filtramos los datos para la fecha actual
     datos_filtrados <- datos |> 
       filter(fecha == fecha_actual) |> 
       arrange(porcentaje_votos) |> 
-      mutate(siglas = factor(siglas, levels = siglas))  # Reordenar factores solo para esta fecha
-    # Convertir la fecha al formato año/mes (mes en letras abreviadas)
+      mutate(siglas = factor(siglas, levels = siglas))  # Reordenamos factores solo para esta fecha
+    # Cambiamos la fecha al formato año/mes (mes en letras abreviadas)
     fecha_formateada <- format(as.Date(fecha_actual), "%b %Y")
-    # Crear el gráfico para la fecha actual
+    # Generamos un gráfico para cada fecha
     grafico <- ggplot(datos_filtrados, aes(x = "", y = porcentaje_votos, fill = siglas)) +
-      geom_col(position = "stack", width = 1.8) +  # Barra apilada única
-      geom_text( # Etiquetas con porcentaje solo si es mayor que 2 para que se vea bien
+      geom_col(position = "stack", width = 5) +  # Barra apilada única
+      geom_text(
+        # Etiquetas con porcentaje solo si es mayor que 2 para que se vea bien
         aes(label = ifelse(porcentaje_votos >= 2, paste0(round(porcentaje_votos, 0), "%"), "")),
-        position = position_stack(vjust = 0.5),  # Centrar el texto dentro de las barras
+        position = position_stack(vjust = 0.5),  # Centramos el texto dentro de las barras
         color = "white",  # Texto en color blanco
         size = 2.75,
         fontface = "bold"
       ) +
       coord_flip() +
-      scale_fill_manual(values = colores, name = "Partido") +  # Usar colores personalizados
+      scale_fill_manual(values = colores, name = "Partido") +  
       labs(
         x = NULL,
         y = NULL,
         title = fecha_formateada
       ) +
-      theme_minimal(base_size = 14) +
+      theme_minimal(base_size = 11) +
       theme(
-        axis.text.x = element_blank(),  # Eliminar elementos no deseados
+        axis.text.x = element_blank(),
         axis.ticks.x = element_blank(),
         panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank(),
-        plot.title = element_text(size = 9, face = "italic"),
-        legend.position = "none"  # Deshabilitar las leyendas individuales
+        plot.title = element_text(size = 8, face = "italic"),
+        legend.position = "none"
       )
     
-    # Agregar el gráfico a la lista
+    # Agregamos el gráfico a la lista
     lista_graficos[[as.character(fecha_actual)]] <- grafico
   }
   
-  # Crear el orden de partidos para la leyenda global
+  # Hacemos el orden de partidos para la leyenda global
 orden_leyenda <- c("PSOE", "PP", "UP","Cs","VOX", "ERC", "PNV",  "CIU", "BNG", "EH-BILDU", "MP", "OTROS")
 leyenda <- ggplot(resumen_agg_pct, aes(x = siglas, y = 1, fill = siglas)) +
-  geom_bar(stat = "identity", width = 0) +  # Asignar valores ficticios a `y`
+  geom_bar(stat = "identity", width = 0) +  # Asignamos valores vacíos a `y`
   scale_fill_manual(values = colores, breaks=orden_leyenda,name = "") +
   theme_void() +
   theme(
-    legend.position = "bottom",         # Colocar la leyenda en la parte inferior
-    legend.text = element_text(size = 8),  # Ajustar el tamaño del texto en la leyenda
-    legend.key.width = unit(0.5, "cm"),    # Ajustar el ancho de las claves de la leyenda
-    legend.direction = "horizontal",       # Disponer la leyenda horizontalmente
-    legend.box.spacing = unit(0.5, "cm"),  # Espaciado entre los elementos de la leyenda
-    legend.justification = "center"        # Centrar la leyenda
+    legend.position = "bottom",         
+    legend.text = element_text(size = 6),  
+    legend.key.width = unit(0.5, "cm"),    
+    legend.direction = "horizontal",       
+    legend.box.spacing = unit(0.5, "cm"),  
+    legend.justification = "center"        
   ) +
-  guides(fill = guide_legend(nrow = 1))    # Forzar una sola fila para la leyenda
+  guides(fill = guide_legend(nrow = 1))    
   
-  # Combinar los gráficos en una única columna
+  # Combinamos los gráficos en una única columna
   grafico_combinado <- wrap_plots(lista_graficos, ncol = 1) +
     plot_annotation(
       title = "Porcentaje de votos por partido en cada elección",
-      theme = theme(plot.title = element_text(hjust = 0.5, size = 16))
+      theme = theme(plot.title = element_text(hjust = 0.5, size = 14))
     )
   
-  # Añadir la leyenda al diseño final con patchwork
+  # Añadimos la leyenda al diseño final usando patchwork
   final_plot <- grafico_combinado + leyenda
   
   return(final_plot)
 }
 
-# Llamar a la función con los datos y colores
+# Llamamos a la función con los datos y colores
 grafico_final <- generar_graficos(resumen_agg_pct, colores)
-
-# Mostrar el gráfico combinado
 print(grafico_final)
-
-
 
 ```
 
+------------------------------------------------------------------------
 
-### Pregunta_1
+Vamos a visualizar ahora los datos de otra manera, con un gráfico interactivo de líneas:
+
+```{r}
+
+resumen_agg_pct <- resumen_agg_pct |> 
+  mutate(
+    fecha_formateada = factor(format(as.Date(fecha), "%b %Y"), levels = format(sort(unique(as.Date(fecha))), "%b %Y"))
+  )
+
+
+grafico <- ggplot(resumen_agg_pct, aes(x = fecha_formateada, y = porcentaje_votos, color = siglas, group = siglas)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  scale_color_manual(values = colores, name = "") +
+  labs(
+    title = "Resultados en porcentaje de cada partido en cada elección",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+ggplotly(grafico)
+
+```
+
+------------------------------------------------------------------------
+
+### Pregunta 1
 
 ¿Qué partido fue el ganador en los municipios con más de 100.000 habitantes (censo) en cada una de las elecciones?
 
 ```{r}
+# quitar los guiones que separan el cod_mun para poder unirlo después en base a id_municipio 
+
+cod_mun <- cod_mun |> 
+  mutate(cod_mun = str_replace_all(cod_mun, "-", ""))
+
 ganadores <- 
   resumen |> 
   filter(censo > 100000) |> 
@@ -363,17 +388,17 @@ ganadores <-
   summarise(partido_ganador = siglas,
             max_votos = votos,
             censo_municipio = censo) |> 
-  ungroup()
+  ungroup() |> 
+  left_join(cod_mun, by = c("id_municipio" = "cod_mun"))
 
-ganadores
 ```
 
+------------------------------------------------------------------------
 
-####Añadimos gráfico de España con municipios de más de 100k habitantes
-coloreados por los partidos que ganaron las elecciones en cada uno de los años electorales
+####Añadimos gráfico de España con municipios de más de 100k habitantes coloreados por los partidos que ganaron las elecciones en cada uno de los años electorales
 
 ```{r}
-
+#| eval: false
 
 ganadores_LAU <- ganadores |> 
   mutate(id_municipio = substr(id_municipio, 3, 7))
@@ -398,7 +423,6 @@ ggplot(mapa_mas100k_ganadores) +
   facet_wrap(~ fecha)
 
 ```
-
 
 ### Pregunta_2
 
@@ -448,6 +472,8 @@ segundo_cuando_pp
 
 ```
 
+------------------------------------------------------------------------
+
 ```{r}
 # manera 2
 
@@ -481,22 +507,99 @@ ggplot(segundos,
 # PSOE o UP fueron el segundo cuando el primero fue el PP
 ```
 
+------------------------------------------------------------------------
+
 ### Pregunta_3
 
 ¿A quién beneficia la baja participación?
 
 ```{r}
 
-```
+# Calcular la participación por municipio
+participacion <- 
+  resumen |> 
+    group_by(id_municipio, siglas) |> 
+    summarise(total_votos = sum(votos, na.rm = TRUE), .groups = "drop") |> 
+    left_join(resumen |> 
+      group_by(id_municipio) |> 
+      summarise(participacion_total = sum(votos, na.rm = TRUE), .groups = "drop"),
+    by = "id_municipio") |> 
+    mutate(participacion_relativa = total_votos / participacion_total)
 
+
+# Calcular la correlación entre participación total y votos relativos
+correlacion <- participacion |> 
+  group_by(siglas) |> 
+  summarise(correlacion = cor(participacion_total, participacion_relativa, use = "complete.obs"))
+#Complete.obs se ocupa de los valores NA, no se si hace falta pero por si acaso lo dejo puesto
+#Deberían salir nº entre -1 y 1, si está por encima de 0 la correlación es positiva lo que significa que saldría beneficiado si la participación es alta, y al revés con los resultados negativos
+
+
+#Un coeficiente de correlación POSITIVO significa que, a medida que AUMENTA la participación, la proporción de votos de ese partido tiende a AUMENTAR
+
+#Correlación positiva → Beneficio con alta participación.
+#Correlación negativa → Beneficio con baja participación.
+
+
+
+#Estamos haciendo la correlación entre estas dos cosas
+#Participación total: el total de votos emitidos en un municipio
+#Proporción de votos de un partido (participacion relativa): los votos de un partido como fracción de los votos totales.
+
+
+# Visualización de resultados con un gráfico de barras
+ggplot(correlacion, aes(x = reorder(siglas, correlacion), y = correlacion)) +
+  geom_col(fill = "green") +
+  labs(
+    title = "Correlación entre participación y votos por partido",
+    x = "Partido",
+    y = "Correlación"
+  )  #poner una leyenda con la explicación de cor positiva y negativa y lo que significan con relacion a los datos y el enunciado
+
+```
 
 ### Pregunta_4
 
 ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que determinados partidos ganan en las zonas rurales?
 
 ```{r}
+# Para analizar la relación entre censo y voto, al ser 2 variables continuas podemos hacerlo mediante una correlación
+resumen |> 
+  summarise(correlacion = cor(censo, votos, use = "complete.obs", method = "pearson"))
 
+
+# Paara ver si hay partidos que se favorecen en las zonas rurales habría que sacar 2 tablas de datos con partidos ganadores:                             Una que tuviera los partidos ganadores en zonas rurales (censo < 10000), y otra que tuviera los partidos ganadores en zonas urbanas (censo > 10000)
+
+
+# Partidos ganadores en zonas rurales
+resumen |> 
+  filter(censo < 10000) |> 
+  group_by(year(fecha), id_municipio) |> 
+  arrange(desc(votos)) |> 
+  slice(1) |> 
+  summarise(partido_ganador = siglas,
+             max_votos = votos,
+            censo_municipio = censo) |>
+  ungroup() |> 
+  count(partido_ganador)
+  
+
+# Partidos ganadores en zonas no rurales
+resumen |> 
+  filter(censo > 10000) |> 
+  group_by(year(fecha), id_municipio) |> 
+  arrange(desc(votos)) |> 
+  slice(1) |> 
+  summarise(partido_ganador = siglas,
+             max_votos = votos,
+            censo_municipio = censo) |>
+  ungroup() |> 
+  count(partido_ganador)
+
+# Para poder ver de forma más clara si hay partidos que se benefician o no, podríamos hacer un gráfico de barras comparando los partidos ganadores en zonas urbanas y rurales
 ```
+
+------------------------------------------------------------------------
 
 ### Pregunta_5
 
@@ -504,7 +607,54 @@ ggplot(segundos,
 
 ```{r}
 
+
+# Datos de ejemplo
+data <- data.frame(
+  partido = rep(c("PP", "PSOE", "Vox", "Sumar", "AR", "Pod.", "SAF", "Junts", "CEUS"), each = 10),
+  porcentaje = c(
+    rnorm(10, 34.6, 1),  # PP
+    rnorm(10, 30.1, 1),  # PSOE
+    rnorm(10, 10.1, 0.5), # Vox
+    rnorm(10, 6.3, 0.3),  # Sumar
+    rnorm(10, 4.4, 0.2),  # AR
+    rnorm(10, 3.3, 0.2),  # Pod.
+    rnorm(10, 2.5, 0.2),  # SAF
+    rnorm(10, 2.4, 0.1),  # Junts
+    rnorm(10, 1.6, 0.1)   # CEUS
+  )
+)
+
+# Calcular el promedio por partido
+promedios <- data |> 
+  group_by(partido) |> 
+  summarise(promedio = mean(porcentaje))
+
+# Crear el gráfico ggplot
+gg <- ggplot(data, aes(x = partido, y = porcentaje)) +
+  geom_bar(data = promedios, aes(x = partido, y = promedio, fill = partido), 
+           stat = "identity", alpha = 0.8, show.legend = FALSE) +
+  geom_jitter(width = 0.2, size = 2, alpha = 0.7, aes(text = sprintf("Encuesta: %.2f", porcentaje))) +  # Puntos individuales
+  geom_text(data = promedios, aes(x = partido, y = promedio + 1, label = round(promedio, 1)),
+            size = 4, fontface = "bold", color = "black") +  # Etiquetas del promedio
+  labs(
+    title = "Estimación de votos",
+    subtitle = "Cada punto es una encuesta y las columnas son el promedio",
+    x = "",
+    y = "Porcentaje"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.text.x = element_text(size = 10, angle = 45, hjust = 1)
+  )
+
+# Convertir a gráfico interactivo con plotly
+ggplotly(gg, tooltip = "text")
+
 ```
+
+------------------------------------------------------------------------
 
 ### Pregunta_6
 
@@ -515,20 +665,59 @@ Sugerencia: Añadir un gráfico interactivo como este donde los puntos son las p
 ![](images/clipboard-3921849863.png)
 
 ```{r}
-resultados <- resumen_2 |> 
+#dar el mismo formato de resumen a surveys
+
+surveys_2 <- surveys |> 
+  pivot_longer(cols = "UCD":"EV", names_to = "partidos", values_to = "porcentaje", values_drop_na = TRUE )
+
+# agrupar los partidos 
+
+surveys_3 <- 
+  surveys_2 |> 
+  mutate(partidos = case_when(
+    str_detect(partidos, "UP|IU|PODEMOS|COMPROMIS") ~ "UP",
+    str_detect(partidos, "PP") ~ "PP",
+    str_detect(partidos, "PNV") ~ "PNV",
+    str_detect(partidos, "PSOE") ~ "PSOE",
+    str_detect(partidos, "MP") ~ "MP",
+    str_detect(partidos, "VOX") ~ "VOX",
+    str_detect(partidos, "EH-BILDU|AMAIUR") ~ "EH-BILDU",
+    str_detect(partidos, "ERC") ~ "ERC",
+    str_detect(partidos, "BNG") ~ "BNG",
+    str_detect(partidos, "CS") ~ "Cs",
+    str_detect(partidos, "CIU|CDC") ~ "CIU", 
+    TRUE ~ "OTROS"
+  ))
+
+#sumar los porcentajes para que no aparezcan datos repetidos
+
+surveys_4 <- surveys_3 |> 
+  group_by(date_elec, id_pollster, field_date_from, field_date_to, partidos) |> 
+  mutate(porcentaje = sum(porcentaje, na.rm = TRUE)) |> 
+  distinct()
+
+# suma de los votos a nivel nacional por eleccion y partido, se convierte este dato en porcentaje para poder compararlo con los datos de surveys
+
+resultados <- resumen |> 
   group_by(fecha, siglas) |>                      
   summarise(Votos_Totales = sum(votos), .groups = "drop") |> 
   group_by(fecha) |> 
-  mutate(Porcentaje = Votos_Totales / sum(Votos_Totales) * 100) |> 
-  select(fecha, siglas, Porcentaje) |> 
-  pivot_wider(names_from = siglas, values_from = Porcentaje)
-casas_encuestadoras <- surveys |> 
-  select(-c(id_pollster,media,field_date_from,field_date_to,exit_poll,turnout)) |> 
-  group_by(date_elec,pollster) |> 
-  summarise(across(everything(), mean, na.rm = FALSE))
-#el valor que aparece en cada pollster para cada eleccion en los partidos es la media ya que alexandra y yo hemos pensado que para unirlas numerosas realizadas para cada eleccion por cada casa hariamos la media y asi obtendríamos un valor único para cada partido con el que podemos comparar
-comparacion <- resultado
+  mutate(Porcentaje_real = Votos_Totales / sum(Votos_Totales) * 100) |> 
+  select(fecha, siglas, Porcentaje_real)
+
+casas_encuestadoras <- surveys_4 |> 
+  select(-c(id_pollster, media, field_date_from, field_date_to, exit_poll, turnout)) |> 
+  group_by(date_elec, pollster, partidos) |> 
+  summarise(porcentaje_estimado = mean(porcentaje, na.rm = TRUE), .groups = "drop")
+
+#el valor que aparece en cada pollster para cada eleccion y partido es la media ya que alexandra y yo hemos pensado que para compararlo con los resultados reales lo más conveniente es tener un único dato por casa y elección, ya que se ha hecho más de una estimación en varias ocasiones 
+
+comparacion <- resultados |> 
+  inner_join(casas_encuestadoras, by = c("siglas" = "partidos")) |> #hay que unirlo por eleccion tambien pero no se como porque el dia no coincide 
+  mutate(Diferencia = Porcentaje_real - porcentaje_estimado)
+
 #ahora hemos pensado que tenemos que hacer un inner join o un left join dependiendo de lo que queramos que se quede en las tablas. No nos decidimos por cual y ademas tendriamos que tener lo de las siglas y las fechas todas en un mismo formato para poder unirlas bien. ¿que creeis que hacer?
+
 # # Paso 4: Comparar resultados reales con encuestas
 # comparacion <- resultados_nacionales %>%
 #   left_join(encuestas_agregadas, by = "Partido") %>%
@@ -538,42 +727,97 @@ comparacion <- resultado
 # print(comparacion)
 ```
 
-### Pregunta_7
-
-Nos dice algo sobre el resultado final de las elecciones que se hayan emitido más votos en la primera sesión que en la segunda? ¿Podemos afirmar que los votantes de un partido son más madrugadores que otros?
-
-```{r}
-
-```
-
-### Pregunta_8
-
-Elaborar mapas de España con ganadores y participacion por provincia y ccaa
-
-```{r}
-totales_election_data <- election_data |> 
-  group_by(id_municipio, fecha) |>  # Agrupa por id_municipio y fecha
-  summarise(
-    total_votos = sum(votos, na.rm = TRUE),
-    censo=mean(censo),
-    participacion = total_votos /censo,
-    .groups = "drop")
-```
+------------------------------------------------------------------------
 
 ### Pregunta_9
 
-Se suele decir que la población de Zaragoza es una muestra representativa de la población española ¿Son los resultados electorales en Zaragoza extrapolables a la población española, excluyendo los votos regionalistas o independentistas?
+Se suele decir que la población de Zaragoza es una muestra representativa de la población española (por tasas medias de renta, nivel de desigualdad, estructura poblacional o franjas de edad). ¿Son los resultados electorales en Zaragoza extrapolables a la población nacional, excluyendo los votos regionalistas o independentistas? ¿Podríamos inferir los resultados nacionales a partir de una única elección local? ¿Se comporta la población local a la hora de votar igual que la nacional?
 
+![](images/clipboard-2929429049.png)
 
+------------------------------------------------------------------------
 
 ```{r}
+#guardamos el id_municipio de la ciudad
+muni<-"Zaragoza"
+cod_mun_ciu<-cod_mun |> 
+  filter(municipio==muni) |> 
+  mutate(cod_mun = str_remove_all(cod_mun, "-"))
+
+
+#calculamos el agregado por fecha y partido en porcentaje
+resumen_ciu_pct<-resumen |> 
+  filter(id_municipio==cod_mun_ciu$cod_mun) |> 
+  group_by(siglas,fecha) |>
+  summarise(total_votos = sum(votos, na.rm = TRUE),.groups = "drop") |>
+  group_by(fecha) |>
+  mutate(total_votos_fecha = sum(total_votos),
+    porcentaje_votos = (total_votos / total_votos_fecha) * 100) |>
+  ungroup() |>
+  arrange(fecha,desc(porcentaje_votos))
+  
+
+#comparamos con los resultados nacionales
+tabla_comp <- resumen_ciu_pct |> 
+  inner_join(resumen_agg_pct, by = c("fecha", "siglas")) |> 
+  select(fecha, siglas, porcentaje_votos.x, porcentaje_votos.y) |> 
+  rename(pct_voto_local = porcentaje_votos.x, 
+         pct_voto_nacional = porcentaje_votos.y) 
+
+#al haber algunos partidos a nivel nacional que no se presentan en el municipio por ser propios de otras regiones, los porcentajes nacionales no suman 100. Vamos a repartir el porcentaje nacional faltante entre todos los partidos que sí están representados de manera ponderada para q sumen 100 y poder comparar más correctamente.
+
+tabla_ajustada <- tabla_comp |> 
+  group_by(fecha) |> 
+  mutate(
+    suma_nacional = sum(pct_voto_nacional),
+    faltante = 100 - suma_nacional,         # Porcentaje faltante
+    proporcion = pct_voto_nacional / suma_nacional,  # Proporción de cada partido
+    ajuste = proporcion * faltante,        # Ajuste proporcional
+    pct_voto_nacional_ajustado = pct_voto_nacional + ajuste  # Nuevo porcentaje ajustado
+  ) |> 
+  mutate(dif=pct_voto_local-pct_voto_nacional_ajustado) |> 
+  ungroup() |> 
+  select(fecha, siglas, pct_voto_local, pct_voto_nacional_ajustado, dif)
+
+
+print(tabla_ajustada)
+
 
 ```
 
-###Pregunta_10
-Serían los resultados obtenidos similares a los reales si nos quedáramos solo con los votos de la sesión1 (por la mañana) o los de la sesión 2 (por la tarde)?
+------------------------------------------------------------------------
 
 ```{r}
 
+# Gráfico de las diferencias
+tabla_ajustada <- tabla_ajustada |>
+  mutate(
+    siglas = factor(siglas, levels = orden_leyenda),
+    fecha_formateada = factor(format(fecha, "%b %Y"), levels = format(sort(unique(fecha)), "%b %Y"))
+  ) |>
+   arrange(fecha_formateada)
+
+titulo<-glue("Diferencia entre Porcentajes de Votos ({muni} - Nacional)")
+ggplot(tabla_ajustada, aes(x = factor(fecha_formateada), y = dif, fill = siglas)) +
+  geom_bar(stat = "identity", position = "dodge") +  # Barras lado a lado
+  labs(
+    title = titulo,
+    x = "",
+    y = "",
+    fill = ""
+  ) +
+  scale_fill_manual(values = colores) +  # Colores personalizados
+  theme_minimal() +
+theme(
+axis.text.x = element_text(angle = 45, hjust = 1),  # Rotar etiquetas del eje X
+strip.text = element_text(size = 10),              # Tamaño de los títulos en los paneles
+panel.spacing = unit(1, "lines")                   # Espaciado entre paneles
+)
+
+ggplotly()
 ```
 
+
+El gráfico de diferencias nos da una idea general de cómo se comportan las 2 distribuciones. Aparentemente las diferencias pueden ser muy significativas, entre un 4% y un 8% de votos, que pueden significar muchos escaños, por lo que en principio no parece tener sentido hacer esa extrapolación.
+
+### 
