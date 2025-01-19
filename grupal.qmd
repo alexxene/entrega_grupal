@@ -444,6 +444,39 @@ grafico_final
 
 ------------------------------------------------------------------------
 
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
+-   Vamos a visualizar ahora los datos de otra manera, con un gráfico interactivo de líneas:
+
+```{r}
+#| code-fold: true
+resumen_agg_pct <- resumen_agg_pct |> 
+  mutate(
+    fecha_formateada = factor(format(as.Date(fecha), "%b %Y"), levels = format(sort(unique(as.Date(fecha))), "%b %Y"))
+  )
+
+
+grafico <- ggplot(resumen_agg_pct, aes(x = fecha_formateada, y = porcentaje_votos, color = siglas, group = siglas)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  scale_color_manual(values = colores, name = "") +
+  labs(
+    title = "Resultados en porcentaje de cada partido en cada elección",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+ggplotly(grafico)
+```
+
+------------------------------------------------------------------------
+
 ## Pregunta_1 {background-image="fondo_diapos.png" background-size="cover"}
 
 ¿Qué partido fue el ganador en los municipios con más de 100.000 habitantes (censo) en cada una de las elecciones?
@@ -1254,6 +1287,105 @@ ggplot(mapa_datos) +
 
 ## Pregunta_9 {background-image="fondo_diapos.png" background-size="cover"}
 
+-   Se suele decir que la población de Zaragoza es una muestra representativa de la población española (por tasas medias de renta, nivel de desigualdad, estructura poblacional o franjas de edad). ¿Son los resultados electorales en Zaragoza extrapolables a la población nacional, excluyendo los votos regionalistas o independentistas? ¿Podríamos inferir los resultados nacionales a partir de una única elección local? ¿Se comporta la población local a la hora de votar igual que la nacional?
+
+```{r}
+#| code-fold: true
+#guardamos el id_municipio de la ciudad
+muni<-"Zaragoza"
+cod_mun_ciu<-cod_mun |> 
+  filter(municipio==muni) |> 
+  mutate(cod_mun = str_remove_all(cod_mun, "-"))
+
+
+#calculamos el agregado por fecha y partido en porcentaje
+resumen_ciu_pct<-resumen |> 
+  filter(id_municipio==cod_mun_ciu$cod_mun) |> 
+  group_by(siglas,fecha) |>
+  summarise(total_votos = sum(votos, na.rm = TRUE),.groups = "drop") |>
+  group_by(fecha) |>
+  mutate(total_votos_fecha = sum(total_votos),
+    porcentaje_votos = (total_votos / total_votos_fecha) * 100) |>
+  ungroup() |>
+  arrange(fecha,desc(porcentaje_votos))
+  
+
+#comparamos con los resultados nacionales
+tabla_comp <- resumen_ciu_pct |> 
+  inner_join(resumen_agg_pct, by = c("fecha", "siglas")) |> 
+  select(fecha, siglas, porcentaje_votos.x, porcentaje_votos.y) |> 
+  rename(pct_voto_local = porcentaje_votos.x, 
+         pct_voto_nacional = porcentaje_votos.y) 
+
+#al haber algunos partidos a nivel nacional que no se presentan en el municipio por ser propios de otras regiones, los porcentajes nacionales no suman 100. Vamos a repartir el porcentaje nacional faltante entre todos los partidos que sí están representados de manera ponderada para q sumen 100 y poder comparar más correctamente.
+
+
+```
+
+------------------------------------------------------------------------
+
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
+```{r}
+#| code-fold: true
+tabla_ajustada <- tabla_comp |> group_by(fecha) |> 
+  mutate(
+    suma_nacional = sum(pct_voto_nacional),
+    faltante = 100 - suma_nacional,         # Porcentaje faltante
+    proporcion = pct_voto_nacional / suma_nacional,  # Proporción de cada partido
+    ajuste = proporcion * faltante,        # Ajuste proporcional
+    pct_voto_nacional_ajustado = pct_voto_nacional + ajuste  # Nuevo porcentaje ajustado
+  ) |> 
+  mutate(dif=pct_voto_local-pct_voto_nacional_ajustado) |> 
+  ungroup() |> 
+  select(fecha, siglas, pct_voto_local, pct_voto_nacional_ajustado, dif)
+
+# Gráfico de las diferencias
+orden_leyenda <- c("PSOE", "PP", "UP","Cs","VOX", "ERC", "PNV",  "CIU", "BNG", "EH-BILDU", "MP", "OTROS")
+```
+
+```{r}
+#| code-fold: true
+tabla_ajustada <- tabla_ajustada |>
+  mutate(
+    siglas = factor(siglas, levels = orden_leyenda),
+    fecha_formateada = factor(format(as.Date(fecha), "%b %Y"), levels = format(sort(unique(as.Date(fecha))), "%b %Y"))
+  ) |> arrange(fecha_formateada)
+
+titulo<-glue("Diferencia entre Porcentajes de Votos ({muni} - Nacional)")
+ggplot(tabla_ajustada, aes(x = factor(fecha_formateada), y = dif, fill = siglas)) +
+  geom_bar(stat = "identity", position = "dodge") +  # Barras lado a lado
+  labs(
+    title = titulo,
+    x = "",
+    y = "",
+    fill = ""
+  ) +
+  scale_fill_manual(values = colores) +  # Colores personalizados
+  theme_minimal() +
+theme(
+axis.text.x = element_text(angle = 45, hjust = 1),  # Rotar etiquetas del eje X
+strip.text = element_text(size = 10),              # Tamaño de los títulos en los paneles
+panel.spacing = unit(1, "lines")                   # Espaciado entre paneles
+)
+
+
+```
+
+------------------------------------------------------------------------
+
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
+```{r}
+ggplotly()
+```
+
+El gráfico de diferencias nos da una idea general de cómo se comportan las 2 distribuciones. Aparentemente las diferencias pueden ser muy significativas, entre un 4% y un 8% de votos, que pueden significar muchos escaños, por lo que en principio no parece tener sentido hacer esa extrapolación.
+
+------------------------------------------------------------------------
+
+## Pregunta_10 {background-image="fondo_diapos.png" background-size="cover"}
+
 Determinar el número de escaños que recibirá cada provincia. ¿Cómo es el reparto de escaños en las provincias? ¿Y en la capital?
 
 ```{r}
@@ -1379,7 +1511,7 @@ Escaños_provincia_2 <-
 
 ------------------------------------------------------------------------
 
-## Pregunta_9 {background-image="fondo_diapos.png" background-size="cover"}
+## Pregunta_10 {background-image="fondo_diapos.png" background-size="cover"}
 
 ![](Pregunta9.png){fig-align="center"}
 
