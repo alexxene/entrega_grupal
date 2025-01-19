@@ -277,7 +277,7 @@ view(resumen)
 
 ##  {background-image="fondo_diapos.png" background-size="cover"}
 
-![](resumen_total.png){width="600"}
+![](images/resumen_total.png){fig-align="center" width="582"}
 
 ::: incremental
 -   Hemos descubierto que las diferencias principales están en <mark>CIU</mark> y <mark>UP</mark> en 2015. `Resumen` le da 630.000 votos a CIU, pero `resumen2` solo 65.000, según la web del ministerio del interior obtuvieron 567.000 [^1]
@@ -299,7 +299,7 @@ view(resumen)
 
 . . .
 
-![](thumbs_up.png){fig-align="center" width="140"}
+![](images/thumbs_up.png){fig-align="center" width="180"}
 
 ------------------------------------------------------------------------
 
@@ -508,7 +508,7 @@ ganadores <-
 
 ¿Qué partido fue el ganador en los municipios con más de 100.000 habitantes (censo) en cada una de las elecciones?
 
-![](Pregunta1.png){fig-align="center"}
+![](images/Pregunta1.png){fig-align="center" width="617"}
 
 ------------------------------------------------------------------------
 
@@ -525,11 +525,9 @@ segundos <-
   slice_max(total_votos, n = 5) |> 
   arrange(fecha, desc(total_votos)) |>
   ungroup()
-
-
 ```
 
-![](Pregunta2.png){fig-align="center" width="496"}
+![](images/Pregunta2.png){fig-align="center" width="421"}
 
 ------------------------------------------------------------------------
 
@@ -752,7 +750,7 @@ comparacion <- participacion_partido |>
 #Los partidos con beneficio_baja negativo, significa que pierden votos cuando la participación es alta en las elecciones
 ```
 
-![](Pregunta3.png){fig-align="center"}
+![](images/Pregunta3.png){fig-align="center" width="609"}
 
 ------------------------------------------------------------------------
 
@@ -808,7 +806,7 @@ ggplot(relacion_censo_votos,
 
 ##  {background-image="fondo_diapos.png" background-size="cover"}
 
--   ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que determinados partidos ganan en las zonas rurales?
+-   ¿Es cierto que determinados partidos ganan en las zonas rurales?
 
 ```{r}
 #| code-fold: true
@@ -1068,7 +1066,7 @@ lista <- list(Error_Promedio_Por_Casa = error_por_casa, Casa_Mas_Precisa = casa_
 
 ```
 
-![](Pregunta6.png){fig-align="center"}
+![](images/Pregunta6.png){fig-align="center" width="499"}
 
 ------------------------------------------------------------------------
 
@@ -1108,7 +1106,7 @@ votos_2019 <- eleccion_2019 |>
 :::
 :::
 
-![](Pregunta7.png){fig-align="center"}
+![](images/Pregunta7.png){fig-align="center" width="606"}
 
 ------------------------------------------------------------------------
 
@@ -1353,7 +1351,7 @@ tabla_ajustada <- tabla_ajustada |>
   ) |> arrange(fecha_formateada)
 
 titulo<-glue("Diferencia entre Porcentajes de Votos ({muni} - Nacional)")
-ggplot(tabla_ajustada, aes(x = factor(fecha_formateada), y = dif, fill = siglas)) +
+gg<- ggplot(tabla_ajustada, aes(x = factor(fecha_formateada), y = dif, fill = siglas)) +
   geom_bar(stat = "identity", position = "dodge") +  # Barras lado a lado
   labs(
     title = titulo,
@@ -1372,12 +1370,14 @@ panel.spacing = unit(1, "lines")                   # Espaciado entre paneles
 
 ```
 
+![](images/clipboard-3336011047.png){fig-align="center"}
+
 ------------------------------------------------------------------------
 
 ##  {background-image="fondo_diapos.png" background-size="cover"}
 
 ```{r}
-ggplotly()
+ggplotly(gg)
 ```
 
 El gráfico de diferencias nos da una idea general de cómo se comportan las 2 distribuciones. Aparentemente las diferencias pueden ser muy significativas, entre un 4% y un 8% de votos, que pueden significar muchos escaños, por lo que en principio no parece tener sentido hacer esa extrapolación.
@@ -1513,7 +1513,11 @@ Escaños_provincia_2 <-
 
 ## Pregunta_10 {background-image="fondo_diapos.png" background-size="cover"}
 
-![](Pregunta9.png){fig-align="center"}
+![](images/Pregunta10.png){fig-align="center" width="587"}
+
+------------------------------------------------------------------------
+
+##  {background-image="integrantes.png" background-size="cover"}
 
 ------------------------------------------------------------------------
 
