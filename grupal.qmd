@@ -26,6 +26,7 @@ library(ggplot2)
 library(patchwork)
 library(plotly)
 library(mapSpain)
+library(purrr)
 
 ```
 
@@ -127,7 +128,7 @@ election_data <-
 
 \-
 
-::: columns
+::::: columns
 ::: {.column width="50%"}
 ```{r}
 #Convertimos a tidy data:
@@ -165,7 +166,7 @@ colores = c("PP"="#1A4CA0",
 
 ```
 :::
-:::
+:::::
 
 ------------------------------------------------------------------------
 
@@ -447,7 +448,8 @@ grafico_final
 ```{r}
 # quitar los guiones que separan el cod_mun para poder unirlo después en base a id_municipio 
 
-cod_mun <- cod_mun |> 
+cod_mun <- 
+  cod_mun |> 
   mutate(cod_mun = str_replace_all(cod_mun, "-", ""))
 
 ganadores <- 
@@ -473,11 +475,13 @@ ganadores <-
 ```{r}
 #| eval: false
 
-ganadores_LAU <- ganadores |> 
+ganadores_LAU <- 
+  ganadores |> 
   mutate(id_municipio = substr(id_municipio, 3, 7))
 
 
-mapa_mas100k_ganadores <- mapSpain::esp_get_munic() |> 
+mapa_mas100k_ganadores <- 
+  mapSpain::esp_get_munic() |> 
   left_join(ganadores_LAU, by = c("LAU_CODE" = "id_municipio"))
 
 ggplot(mapa_mas100k_ganadores) +
@@ -524,6 +528,7 @@ segundos <-
 
 ```{r}
 # manera 1
+
 primeros_segundos <- 
   segundos |> 
   group_by(fecha) |> 
@@ -542,7 +547,7 @@ primeros_segundos <-
 
 \-
 
-::: columns
+::::: columns
 ::: {.column width="50%"}
 ```{r}
 # Filtrar cuando el primero es PSOE
@@ -560,7 +565,7 @@ segundo_cuando_pp <-
   filter(primero == "PP")
 ```
 :::
-:::
+:::::
 
 ![](pp_y_psoe.png){fig-align="center"}
 
@@ -568,7 +573,7 @@ segundo_cuando_pp <-
 
 ##  {background-image="fondo_diapos.png" background-size="cover"}
 
-::: columns
+::::: columns
 ::: {.column width="35%"}
 ```{r}
 # manera 2
@@ -583,7 +588,8 @@ segundos <- segundos |>
 
 ::: {.column width="65%"}
 ```{r}
-resultado <- ggplot(segundos, 
+resultado <- 
+  ggplot(segundos, 
        aes(x = siglas, 
            y = total_votos, 
            fill = siglas)) +
@@ -596,13 +602,23 @@ resultado <- ggplot(segundos,
        y = "Número de votos",
        fill = "Partido") +
   theme_minimal(base_family = "Rockwell") +
-  theme(axis.text.x = element_text(angle = 90),
+  theme(axis.text.x = element_text(angle = 50),
         axis.title.x = element_blank(),
         legend.position = "bottom") +
-  facet_wrap(~fecha, nrow = 1, scales = "free_x")
+  facet_wrap(~fecha, nrow = 1, scales = "free_x")+
+  theme(plot.title = element_text(size = 20,face = "bold", , hjust = 0.5),
+        plot.subtitle = element_text(size = 15),
+        legend.key.size = unit(0.9, "cm"))
+
 ```
 :::
-:::
+:::::
+
+------------------------------------------------------------------------
+
+```{r}
+ggplotly(resultado)
+```
 
 ------------------------------------------------------------------------
 
@@ -616,16 +632,19 @@ resultado <- ggplot(segundos,
 participacion <- 
   resumen |> 
     group_by(id_municipio, siglas) |> 
-    summarise(total_votos = sum(votos, na.rm = TRUE), .groups = "drop") |> 
+    summarise(total_votos = sum(votos, 
+                                na.rm = TRUE), .groups = "drop") |> 
     left_join(resumen |> 
       group_by(id_municipio) |> 
-      summarise(participacion_total = sum(votos, na.rm = TRUE), .groups = "drop"),
+      summarise(participacion_total = sum(votos, 
+                                          na.rm = TRUE), .groups = "drop"),
     by = "id_municipio") |> 
     mutate(participacion_relativa = total_votos / participacion_total)
 
 
 # Calcular la correlación entre participación total y votos relativos
-correlacion <- participacion |> 
+correlacion <- 
+  participacion |> 
   group_by(siglas) |> 
   summarise(correlacion = cor(participacion_total, participacion_relativa, use = "complete.obs"))
 #Complete.obs se ocupa de los valores NA, no se si hace falta pero por si acaso lo dejo puesto
@@ -648,17 +667,97 @@ correlacion <- participacion |>
 ##  {background-image="fondo_diapos.png" background-size="cover"}
 
 ```{r}
-
 # Visualización de resultados con un gráfico de barras
-ggplot(correlacion, aes(x = reorder(siglas, correlacion), y = correlacion)) +
-  geom_col(fill = "#B485EC") +
+
+grafico_corr <-
+  ggplot(correlacion, 
+       aes(x = reorder(siglas, correlacion), 
+           y = correlacion, 
+           fill = siglas)) + 
+  geom_col() +
+  scale_fill_manual(values = colores) + 
   labs(
     title = "Correlación entre participación y votos por partido",
-    x = "Partido",
-    y = "Correlación"
-  )+
-  theme_minimal(base_family = "Rockwell")  #poner una leyenda con la explicación de cor positiva y negativa y lo que significan con relacion a los datos y el enunciado
+    subtitle = "La correlación negativa indica que menor participación aumenta los votos",
+    x = NULL,
+    y = "Correlación",
+    fill = "Partidos"
+  ) +
+  theme_minimal(base_family = "Rockwell")+
+  theme(plot.title = element_text(size = 18,face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
 
+
+```
+
+------------------------------------------------------------------------
+
+```{r}
+grafico_corr
+```
+
+------------------------------------------------------------------------
+
+```{r}
+#Otra manera comparando la participación de los distintos años 
+#Calculamos la participación total por año, a nivel nacional 
+participacion_anual <- 
+  resumen |>
+  group_by(fecha) |>
+  summarise(participacion_total = sum(votos, na.rm = TRUE))
+
+media_votos_años <- 
+  mean(participacion_anual$participacion_total)
+
+
+#Clasificamos los años según si la participación ha sido más alta de lo normal, media o más baja
+participacion_anual <- 
+  participacion_anual |>
+  mutate(categoria_participacion = case_when(
+    participacion_total < media_votos_años ~ "Baja_participacion",
+    participacion_total >= media_votos_años ~ "Alta_participacion" ))
+
+
+#Calculamos los votos históricos por partido 
+totales_partido <- 
+  resumen |>
+  group_by(siglas) |>
+  summarise(votos_totales = sum(votos, na.rm = TRUE))  
+  
+
+#Participación relativa por partido y año
+participacion_partido <- 
+  resumen |>
+  group_by(fecha, siglas) |>
+  summarise(votos_partido = sum(votos, na.rm = TRUE), .groups = "drop") |>
+  left_join(participacion_anual, by = "fecha") |>
+  left_join(totales_partido, by = "siglas") |>
+  mutate(participacion_relativa = votos_partido / participacion_total)
+
+
+#en esta tabla tenemos votos_partido que son los votos de ese partido en esa elección
+  #participación_total es el total de votos de la elección de ese año, todos los votantes
+  #votos_totales son el total de votos que ha conseguido cada partido en todas las elecciones, suma todos los votos que ha tenido a lo largo de los años 
+  #participación_relativa es el total de votos del partido ese año entre el total de votos habidos en esas elecciones
+#Analizamos el beneficio por tipo de participación
+
+comparacion <- 
+  participacion_partido |>
+  filter(categoria_participacion %in% c("Baja_participacion", "Alta_participacion")) |>
+  group_by(siglas, 
+           categoria_participacion) |>
+  summarise(promedio_participacion = mean(participacion_relativa, na.rm = TRUE), .groups = "drop") |>
+  pivot_wider(names_from = categoria_participacion, 
+              values_from = promedio_participacion) |>
+  mutate(beneficio_baja = Baja_participacion - Alta_participacion) |> 
+  arrange(desc(beneficio_baja))
+# Con el beneficio_baja sacamos la diferencia de porcentaje de votos de cada partido que han tenido los años de elecciones con naja participación entre los años de alta participación
+# Los partidos donde beneficio_baja es positivo, significa que salen ganando cuando hay baja participación
+#Los partidos con beneficio_baja negativo, significa que pierden votos cuando la participación es alta en las elecciones
+```
+
+```{r}
+comparacion
 ```
 
 ------------------------------------------------------------------------
@@ -668,6 +767,7 @@ ggplot(correlacion, aes(x = reorder(siglas, correlacion), y = correlacion)) +
 -   ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que determinados partidos ganan en las zonas rurales?
 
 ```{r}
+#| code-fold: true
 # ANALIZANDO RELACIÓN ENTRE CENSO Y VOTO
 
 # Calculamos el total de votos por municipio y por fecha electoral
@@ -677,23 +777,33 @@ relacion_censo_votos <-
   summarise(Total_votos = sum(votos), .groups = "drop")
 
 # Calcular la correlación entre censo y votos totales
-correlacion <-
+correlacion_1 <-
   cor(relacion_censo_votos$censo, relacion_censo_votos$Total_votos)
+
 print(paste("Correlación entre censo y votos totales:",
-            round(correlacion, 2)))
+            round(correlacion_1, 2)))
 
 # Visualizar la correlación
-ggplot(relacion_censo_votos, aes(x = censo, y = Total_votos)) +
-  geom_point(alpha = 0.7) +
-  geom_smooth(method = "lm", color = "#1E96C6", se = FALSE) +
+ggplot(relacion_censo_votos, 
+       aes(x = censo, y = Total_votos)) +
+  geom_point(alpha = 0.7, color = "#F4A460", size = 1.3) +
+  geom_smooth(method = "lm", 
+              color = "#5F4B8B",
+              linewidth = 1,
+              se = FALSE) +
   labs(
     title = "Relación entre censo y votos totales",
+    subtitle = paste("Correlación:", round(correlacion_1, 2)),
     x = "Censo (personas censadas)",
     y = "Votos totales"
   ) +
-  theme_minimal(base_family = "Rockwell")
+  theme_minimal(base_family = "Rockwell")+
+  theme(plot.title = element_text(size = 18,face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
 
 ```
+
+------------------------------------------------------------------------
 
 ```{r}
 #| code-fold: true
@@ -715,15 +825,18 @@ votos_por_zona <-
 # Creamos el gráfico que muestre las diferencias entre partidos, tipos de zona y fechas de elecciones
 ggplot(votos_por_zona, 
        aes(x = siglas, y = Total_votos, fill = Zona)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.5)) +
   facet_wrap(~ fecha, ncol = 2) + # Dividir gráficos por fecha de elección
+  scale_fill_manual(values = c("Rural" = "#D2B48C", "Urbano" = "#8B0000"))+
   labs(
     title = "Comparación de votos por partido entre zonas rurales y urbanas",
     x = "Siglas",
     y = "Total de Votos",
     fill = "Zona") +
   theme_minimal(base_family = "Rockwell") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(size = 18,face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5)   )
 
 # Como era de esperar, nos salen 6 gráficos (uno por cada fecha electoral) pero el problema es que puede ser bastante complicado de entender a la hora de exponerlo. Es por ello que creo conveniente poner 3 gráficos pero por separados que muestren cómo ha ido evolucionando los votos a lo largo del tiempo, por ejemplo el gráfico del 2008, el del 2016 y el del 2019
 # GRÁFICOS 2008, 2016 Y 2019
@@ -734,18 +847,22 @@ votos_por_zona_2008 <-
   filter(fecha == "2008-03-01") |> 
   group_by(Zona, siglas) |> 
   summarise(Total_votos = sum(votos), .groups = "drop")
+
 zona_2008 <-
   ggplot(votos_por_zona_2008, aes(x = siglas, y = Total_votos, fill = Zona)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.5)) +
+  scale_fill_manual(values = c("Rural" = "#D2B48C", "Urbano" = "#8B0000")) +
   labs(
-    title = "Comparación de votos por partido entre zonas rurales y urbanas en Marzo de 2008",
+    title = "Comparación de votos por partido entre zonas rurales y urbanas",
+    subtitle = "Fecha: Marzo de 2008",
     x = "Siglas",
     y = "Total de Votos",
     fill = "Zona"
-  ) +
+  ) + 
   theme_minimal(base_family = "Rockwell") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  theme(plot.title = element_text(size = 11))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(size = 18,face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
 
 # 2016
 votos_por_zona_2016 <-
@@ -753,46 +870,58 @@ votos_por_zona_2016 <-
   filter(fecha == "2016-06-01") |> 
   group_by(Zona, siglas) |> 
   summarise(Total_votos = sum(votos), .groups = "drop")
+
 zona_2016 <- 
   ggplot(votos_por_zona_2016, aes(x = siglas, y = Total_votos, fill = Zona)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.5)) +
+  scale_fill_manual(values = c("Rural" = "#D2B48C", "Urbano" = "#8B0000")) +
   labs(
-    title = "Comparación de votos por partido entre zonas rurales y urbanas en Junio de 2016",
+    title = "Comparación de votos por partido entre zonas rurales y urbanas",
+    subtitle = "Fecha: Junio de 2016",
     x = "Siglas",
     y = "Total de Votos",
     fill = "Zona"
   ) +
   theme_minimal(base_family = "Rockwell") +
   theme(axis.text.x = element_text(angle = 45, 
-                                   hjust = 1)) + 
-  theme(plot.title = element_text(size = 11))
+                                   hjust = 1),
+        plot.title = element_text(size = 18,face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
 
 # 2019 (la última)
 votos_por_zona_2019 <-
   rurales_urbanas |> 
   filter(fecha == "2019-11-01") |> 
   group_by(Zona, siglas) |> 
-  summarise(Total_votos = sum(votos), .groups = "drop")
+  summarise(Total_votos = sum(votos), 
+            .groups = "drop")
 
 zona_2019 <-
   ggplot(votos_por_zona_2019, aes(x = siglas, 
                                   y = Total_votos, 
                                   fill = Zona)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.5)) +
+  scale_fill_manual(values = c("Rural" = "#D2B48C", "Urbano" = "#8B0000")) + 
   labs(
-    title = "Comparación de votos por partido entre zonas rurales y urbanas en Noviembre de 2019",
+    title = "Comparación de votos por partido entre zonas rurales y urbanas",
+    subtitle = "Fecha: Noviembre de 2019",
     x = "Siglas",
     y = "Total de Votos",
     fill = "Zona"
   ) +
   theme_minimal(base_family = "Rockwell") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  theme(plot.title = element_text(size = 11))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(size = 18,face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
 
-plotly::ggplotly(zona_2008)
-plotly::ggplotly(zona_2016)
-plotly::ggplotly(zona_2019)
+```
 
+------------------------------------------------------------------------
+
+```{r}
+zona_2008
+zona_2016
+zona_2019
 ```
 
 ------------------------------------------------------------------------
@@ -803,12 +932,11 @@ plotly::ggplotly(zona_2019)
 
 ```{r}
 #dar el mismo formato de resumen a surveys
-
-surveys_2 <- surveys |> 
+surveys_2 <- 
+  surveys |> 
   pivot_longer(cols = "UCD":"EV", names_to = "partidos", values_to = "porcentaje", values_drop_na = TRUE )
 
 # agrupar los partidos 
-
 surveys_2 <- 
   surveys_2 |> 
   mutate(partidos = case_when(
@@ -828,7 +956,8 @@ surveys_2 <-
 
 #el valor porcentaje_estimado que aparece en cada pollster para cada eleccion y partido es la media ya que alexandra y yo hemos pensado que para compararlo con los resultados reales lo más conveniente es tener un único dato por casa, partido y elección, ya que es como aparece en los resultados reales 
 
-casas_encuestadoras <- surveys_2 |> 
+casas_encuestadoras <- 
+  surveys_2 |> 
   select(c(date_elec,id_pollster,pollster,partidos,porcentaje)) |> #seleccionamos solo las columnas necesarias
   mutate(date_elec = format(as.Date(date_elec), "%Y-%m")) |> #quitamos el día para después no tener problemas en la comparación
   group_by(date_elec, id_pollster, partidos) |> 
@@ -838,7 +967,8 @@ casas_encuestadoras <- surveys_2 |>
 
 # suma de los votos a nivel nacional por eleccion y partido, se convierte este dato en porcentaje para poder compararlo con los datos de surveys
 
-resultados <- resumen |> 
+resultados <- 
+  resumen |> 
   mutate(fecha = format(as.Date(fecha), "%Y-%m")) |> 
   group_by(fecha, siglas) |>                      
   summarise(Votos_Totales = sum(votos), .groups = "drop") |> 
@@ -846,61 +976,208 @@ resultados <- resumen |>
   mutate(Porcentaje_real = Votos_Totales / sum(Votos_Totales) * 100) |> 
   select(fecha, siglas, Porcentaje_real)
 
-comparacion <- casas_encuestadoras |> 
-  left_join(resultados, by = c("date_elec" = "fecha", "partidos" = "siglas")) |> #unir por fecha y partido 
+comparacion <- 
+  casas_encuestadoras |> 
+  left_join(resultados, 
+            by = c("date_elec" = "fecha", "partidos" = "siglas")) |> #unir por fecha y partido 
   mutate(error = Porcentaje_real - porcentaje_estimado) |> 
-  select(date_elec, id_pollster, pollster, partidos, Porcentaje_real, porcentaje_estimado, error)
+  select(date_elec, id_pollster, 
+         pollster, partidos, Porcentaje_real, 
+         porcentaje_estimado, error)
 
-library(plotly)
-
-casas_encuestadoras <- casas_encuestadoras |> 
+casas_encuestadoras <- 
+  casas_encuestadoras |> 
   rename(fecha = date_elec)
 
-grafico_combinado <- ggplot() +
+grafico_combinado <- 
+  ggplot() +
   geom_bar(data = resultados, 
            aes(x = siglas, y = Porcentaje_real, fill = siglas), 
-           stat = "identity", position = "dodge") +   # gráfico de barras con el porcentaje real de votos por partido y elección 
+           stat = "identity", position = "dodge",alpha = 0.7) +   # gráfico de barras con el porcentaje real de votos por partido y elección 
   geom_jitter(data = casas_encuestadoras, 
-              aes(x = partidos, y = porcentaje_estimado, label = pollster), 
-              color = "black", shape = 16, size = 0.5, 
-              position = position_jitter(width = 0.1, height = 0)) + # grafico de puntos con porceentajes estimados de cada casa por partido y elección
+              aes(x = partidos, y = porcentaje_estimado, fill = partidos), 
+              shape = 21, size = 0.5, stroke = 0.1,
+              color = "white",  
+              position = position_jitter(width = 0.1, height = 0)) +  # grafico de puntos con porceentajes estimados de cada casa por partido y elección
   labs(title = "Porcentaje de votos reales y estimaciones por partido",
-    x = "Partido",
-    y = "Porcentaje") +
+    x = NULL,
+    y = "Porcentaje",
+    fill = "Partidos") +
   scale_fill_manual(values = colores) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
     legend.position = "none") +
-  facet_wrap(~fecha)
+  facet_wrap(~fecha) +
+  theme_minimal(base_family = "Rockwell") +
+  theme(plot.title = element_text(size = 18,face = "bold", hjust = 0.5),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.grid.minor = element_blank())
 
+```
 
-grafico_interactivo <- ggplotly(grafico_combinado)
+------------------------------------------------------------------------
 
-grafico_interactivo
-
-
+```{r}
+ggplotly(grafico_combinado)
 ```
 
 ------------------------------------------------------------------------
 
 ## Pregunta_6 {background-image="fondo_diapos.png" background-size="cover"}
 
-¿Qué casas encuestadoras acertaron más y cuáles se desviaron más de los resultados?
+-   ¿Qué casas encuestadoras acertaron más y cuáles se desviaron más de los resultados?
 
-Sugerencia: Añadir un gráfico interactivo como este donde los puntos son las previsiones de las casas encuestadoreas y las barras los resultados reales
+*Sugerencia: Añadir un gráfico interactivo como este donde los puntos son las previsiones de las casas encuestadoreas y las barras los resultados reales*
 
 ![](images/clipboard-3921849863.png)
 
 ```{r}
+# Paso 1: Calcular el error absoluto para cada encuesta
+datos_combinados <- 
+  casas_encuestadoras |> 
+  rename(siglas = partidos) |> 
+  inner_join(resultados, by = c("fecha", "siglas")) |> 
+  mutate(error_absoluto = abs(porcentaje_estimado - Porcentaje_real))
 
+# Paso 2: Calcular el error promedio por casa encuestadora
+error_por_casa <- 
+  datos_combinados |> 
+  group_by(pollster) |> 
+  summarise(error_medio = mean(error_absoluto, na.rm = TRUE)) |> 
+  arrange(error_medio)
+
+# Paso 3: Identificar la casa encuestadora más precisa y la que más se desvió
+casa_mas_precisa <- 
+  error_por_casa |> slice_min(error_medio)
+
+casa_mas_desviada <- 
+  error_por_casa |> slice_max(error_medio)
+
+# Visualización de resultados
+list(Error_Promedio_Por_Casa = error_por_casa, Casa_Mas_Precisa = casa_mas_precisa,Casa_Mas_Desviada = casa_mas_desviada)
 ```
 
 ------------------------------------------------------------------------
 
 ## Pregunta_7 {background-image="fondo_diapos.png" background-size="cover"}
 
--   Nos dice algo sobre el resultado final de las elecciones que se hayan emitido más votos en la primera sesión que en la segunda? ¿Podemos afirmar que los votantes de un partido son más madrugadores que otros?
+-   Sabemos que en 2019 se realizaron 2 elecciones pero ¿hubo diferencias en el total de gente que asistió a votar?. ¿Que partidos ganaron votos en la segunda ronda y cuales salieron perdiendo?
 
 ```{r}
+# Filtrar solo las elecciones que ocurrieron en 2019
+eleccion_2019 <-
+  resumen |> 
+  filter(year(fecha) == 2019)
+
+# Calculamos la participación total por elección, observamos que en la realizada en abril hay cerca de 2 millones más de votantes que en la de finales del mismo año
+participacion_2019 <- 
+  eleccion_2019 |> 
+  group_by(fecha) |> 
+  summarise(participacion_total = sum(votos, na.rm = TRUE)) |> 
+  arrange(fecha)
+
+print(participacion_2019)
+
+# Comparamos los votos de cada partido en las dos elecciones de 2019
+votos_2019 <- 
+  eleccion_2019 |> 
+  group_by(fecha, siglas) |> 
+  summarise(votos_totales = sum(votos, na.rm = TRUE), .groups = "drop") |> 
+  pivot_wider(names_from = fecha, values_from = votos_totales) |> 
+  mutate(diferencia_votos = `2019-11-01` - `2019-04-01`) |> 
+  arrange(desc(diferencia_votos))
+#Esto nos devuelve una tabla con los votos de cada grupo de siglas, una columna con la primera elección y otra con la segunda. al final tenemos una tercera columna con la diferencia de votos entre elecciones, los positivos son los partidos que ganaron votos y los negativos los que perdieron electores
+print(votos_2019) 
+```
+
+```{r}
+#Ahora unos gráficos para observar visualmente las diferencias entre sufragios
+max_part <- 
+  max(participacion_2019$participacion_total, 
+      na.rm = TRUE)
+
+ggplot(participacion_2019, 
+       aes(x = as.factor(fecha), 
+           y = participacion_total, 
+           fill = as.factor(fecha))) +
+  geom_bar(stat = "identity", 
+           show.legend = FALSE, 
+           width = 0.6,
+           alpha = 0.9) + 
+  scale_fill_manual(values = c("#D72638", "#6A4C93")) +
+  labs(
+    title = "Participación total en las elecciones de 2019",
+    subtitle = "Comparación entre fechas de elecciones",
+    x = "Fecha de Elección",
+    y = "Total de Votantes (en millones)"
+  ) +
+  theme_minimal(base_family = "Rockwell")+
+  scale_y_continuous(breaks = seq(0, max_part, by = 2e6), 
+                     labels = scales::label_number(scale = 1e-6, suffix = "M"))+
+  theme(plot.title = element_text(size = 18,face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+
+
+
+# Gráfico de diferencias de votos por partido
+max_dif <- 
+  max(abs(votos_2019$diferencia_votos), 
+      na.rm = TRUE)
+
+ggplot(votos_2019, 
+       aes(x = reorder(siglas, diferencia_votos), 
+           y = diferencia_votos, 
+           fill = diferencia_votos > 0)) +
+  geom_bar(stat = "identity", 
+           show.legend = FALSE) +
+  labs(title = "Diferencia de votos por partido entre abril y noviembre de 2019",
+       x = "Partido",
+       y = "Diferencia de Votos") +
+  theme_minimal(base_family = "Rockwell") +
+  scale_fill_manual(values = c("#E57373", "#81C784")) +  # Rojo para pérdidas, verde para ganancias
+  scale_y_continuous(
+    breaks = seq(-max_dif, max_dif, by = 500000),  # Intervalos de 2M
+    labels = scales::label_number(scale = 1e-6, suffix = "M")  # Convertir a millones
+  ) +
+  coord_flip() +# Para que el gráfico sea horizontal
+  theme(plot.title = element_text(size = 18,face = "bold", hjust = 0.5))
+
+
+
+#Gráfico superpuesto con los votos en columnas de cada partido
+
+votos_2019_long_temp <- 
+  votos_2019 |> 
+  pivot_longer(cols = -c(siglas, diferencia_votos),  # Mantener siglas y diferencia_votos, convertir las fechas
+               names_to = "fecha",
+               values_to = "votos_totales")
+
+votos_2019_long <- 
+  votos_2019_long_temp |> 
+  group_by(siglas) |> 
+  summarise(total_votos = sum(votos_totales, 
+                              na.rm = TRUE)) |> 
+  right_join(votos_2019_long_temp, by = "siglas") |> 
+  mutate(siglas = fct_reorder(siglas, 
+                              total_votos, 
+                              .desc = TRUE))
+
+
+ggplot(votos_2019_long, 
+       aes(x = siglas, 
+           y = votos_totales, 
+           fill = as.factor(fecha))) +
+  geom_col(position = "identity", alpha = 0.8) +  # Superponer barras con transparencia
+  labs(title = "Comparación de votos por partido en las elecciones de 2019",
+       x = "Partido",
+       y = "Total de Votos",
+       fill = "Fecha de elección") +
+  theme_minimal(base_family = "Rockwell") +
+  scale_fill_manual(values = c("#D72638", "#6A4C93")) +  # Azul para abril, naranja para noviembre
+  scale_y_continuous(
+    labels = scales::label_number(scale = 1e-6, suffix = "M")  # Convertir a millones
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(size = 18,face = "bold", hjust = 0.5))
 
 ```
 
@@ -969,7 +1246,8 @@ mapa_datos <-
 
 
 
-ggplot(mapa_datos) +
+map_ganador <- 
+  ggplot(mapa_datos) +
   geom_sf(aes(fill = partido_ganador,
               alpha = participacion), 
           color = "white", 
@@ -981,29 +1259,208 @@ ggplot(mapa_datos) +
     subtitle = "Alpha representa la participación"
   ) +
   guides(alpha = "none") +
-  theme_minimal(base_family = "Rockwell") 
+  theme_minimal(base_family = "Rockwell")+
+  theme(plot.title = element_text(size = 18,face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
   
+```
 
+------------------------------------------------------------------------
+
+```{r}
+map_ganador
 ```
 
 ------------------------------------------------------------------------
 
 ## Pregunta_9 {background-image="fondo_diapos.png" background-size="cover"}
 
-Se suele decir que la población de Zaragoza es una muestra representativa de la población española ¿Son los resultados electorales en Zaragoza extrapolables a la población española, excluyendo los votos regionalistas o independentistas?
+-   Determinar el número de escaños que recibirá cada provincia. ¿Cómo es el reparto de escaños en las provincias? ¿Y en la capital?
 
 ```{r}
+# DETERMINAMOS CUÁNTOS ESCAÑOS LE CORRESPONDEN A CADA PROVINCIA
+# Escribimos todas las provincias de España (52)
+provincias <- 
+  c(
+  "Álava", "Albacete", "Alicante", "Almería", "Asturias", "Ávila",
+  "Badajoz", "Barcelona", "Burgos", "Cáceres", "Cádiz", "Cantabria",
+  "Castellón", "Ciudad Real", "Córdoba", "La Coruña", "Cuenca",
+  "Gerona", "Granada", "Guadalajara", "Guipúzcoa", "Huelva", "Huesca",
+  "Islas Baleares", "Jaén", "León", "Lérida", "Lugo", "Madrid", "Málaga",
+  "Murcia", "Navarra", "Orense", "Palencia", "Las Palmas", "Pontevedra",
+  "La Rioja", "Salamanca", "Segovia", "Sevilla", "Soria", "Tarragona",
+  "Santa Cruz de Tenerife", "Teruel", "Toledo", "Valencia", "Valladolid",
+  "Vizcaya", "Zamora", "Zaragoza", "Ceuta", "Melilla"
+)
+# Sacamos el código de provincia de la variable "id_municipio" y a cada código le asignamos el nombre de su provincia. (Los códigos son obtenidos desde el INE)
+resumen_provincias <- 
+  resumen |> 
+  mutate(id_provincia = substr(id_municipio, 3, 4)) |> 
+  relocate(id_provincia, .after = id_municipio) |> 
+  mutate(provincia = case_when(
+    id_provincia == "01" ~ "Álaba",
+    id_provincia == "02" ~ "Albacete",
+    id_provincia == "03" ~ "Alicante",
+    id_provincia == "04" ~ "Almería",
+    id_provincia == "05" ~ "Ávila",
+    id_provincia == "06" ~ "Badajoz",
+    id_provincia == "07" ~ "Belears, Illes",
+    id_provincia == "08" ~ "Barcelona",
+    id_provincia == "09" ~ "Burgos",
+    id_provincia == "10" ~ "Cáceres",
+    id_provincia == "11" ~ "Cádiz",
+    id_provincia == "12" ~ "Castellón",
+    id_provincia == "13" ~ "Ciudad Real",
+    id_provincia == "14" ~ "Córdoba",
+    id_provincia == "15" ~ "Coruña, A",
+    id_provincia == "16" ~ "Cuenca",
+    id_provincia == "17" ~ "Girona",
+    id_provincia == "18" ~ "Granada",
+    id_provincia == "19" ~ "Guadalajara",
+    id_provincia == "20" ~ "Gipuzkoa",
+    id_provincia == "21" ~ "Huelva",
+    id_provincia == "22" ~ "Huesca",
+    id_provincia == "23" ~ "Jaén",
+    id_provincia == "24" ~ "León",
+    id_provincia == "25" ~ "Lleida",
+    id_provincia == "26" ~ "Rioja, La",
+    id_provincia == "27" ~ "Lugo",
+    id_provincia == "28" ~ "Madrid",
+    id_provincia == "29" ~ "Málaga",
+    id_provincia == "30" ~ "Murcia",
+    id_provincia == "31" ~ "Navarra",
+    id_provincia == "32" ~ "Ourense",
+    id_provincia == "33" ~ "Asturias",
+    id_provincia == "34" ~ "Palencia",
+    id_provincia == "35" ~ "Palmas, Las",
+    id_provincia == "36" ~ "Pontevedra",
+    id_provincia == "37" ~ "Salamanca",
+    id_provincia == "38" ~ "Santa Cruz De Tenerife",
+    id_provincia == "39" ~ "Cantabria",
+    id_provincia == "40" ~ "Segovia",
+    id_provincia == "41" ~ "Sevilla",
+    id_provincia == "42" ~ "Soria",
+    id_provincia == "43" ~ "Tarragona",
+    id_provincia == "44" ~ "Teruel",
+    id_provincia == "45" ~ "Toledo",
+    id_provincia == "46" ~ "Valencia/València",
+    id_provincia == "47" ~ "Valladolid",
+    id_provincia == "48" ~ "Bizkaia",
+    id_provincia == "49" ~ "Zamora",
+    id_provincia == "50" ~ "Zaragoza",
+    id_provincia == "51" ~ "Ceuta",
+    id_provincia == "52" ~ "Melilla"
+  )) |> 
+  relocate(provincia, .after = id_provincia)
+# Vamos a calcular cuántos escaños debe tener cada provincia. Esto es un simple cálculo el cual consiste en dividir el número de personas votantes que viven en cada provincia ("censo" por provincia) entre el número de personas votantes en España ("censo" del país). Ese número hay que multiplicarlo por 248 debido a que el número máximo de escaños son 350 y cada provincia de las 52 que hay debe tener mínimo 2 escaños (excepto Ceuta y Melilla que en vez de 2 escaños es 1 escaño). Entonces serían 350 - 50*2 -2*1 = 248
+# Redondeamos el número que nos salga para tener los escaños en números naturales
+Escaños_provincia <-
+  resumen_provincias |> 
+  group_by(fecha, provincia) |> 
+  summarise(Provincia_pob = sum(unique(censo)), 
+            .groups = "drop") |> 
+  mutate(Total_pob = sum(Provincia_pob),
+         n_escaños = (Provincia_pob/Total_pob)*248,
+         n_escaños = round(n_escaños),
+         .by = fecha) |> 
+  mutate(n_escaños = case_when(
+    provincia == "Ceuta" ~ n_escaños + 1,
+    provincia == "Melilla" ~ n_escaños + 1,
+    TRUE ~ n_escaños + 2
+  ))
+# Para que un partido tenga la opción de poder obtener un escaño en una provincia, los votos de ese partido en esa provincia deben de ser superiores al 5% de los votos válidos (votos + votos en blanco) de esa provincia.
+# En esta tabla se enseña el umbral de votos mínimo para cada fecha en cada provincia
+Umbral_minimo <-
+  resumen_provincias |> 
+  group_by(fecha, provincia) |> 
+  summarise(Votos_validos = 
+              sum(unique(votos_candidaturas))
+            + sum(unique(votos_blancos))) |> 
+  mutate(minimo_votos = Votos_validos * 0.05,
+         minimo_votos = round(minimo_votos)) |> 
+  ungroup()
+# En esta tabla se muestran los votos de cada partido en cada provincia para cada fecha
+Votos_partido <- 
+  resumen_provincias |> 
+  group_by(fecha, provincia, siglas) |> 
+  summarise(votos = sum(votos),
+            .groups = "drop")
+# Unimos estas últimas dos tablas y añadimos un filtro, lo que nos da con los partidos con derecho a escaños en cada provincia. (Los partidos con derecho a escaños serán entonces los que superen el mínimo de votos de cada provincia)
+Partidos_con_derecho_escaños <-
+  Umbral_minimo |> 
+  inner_join(Votos_partido)|> 
+  group_by(fecha, siglas, provincia) |> 
+  filter(votos >= unique(minimo_votos))
+# Para finalizar, tenemos que unir la primera tabla (Escaños_provincia) con la última (Partidos_con_derecho_escaños) para tener, en una misma tabla, los datos que nos interesan: Nº de escaños de cada provincia, nombre de la provincia, votos de los partidos de cada provincia, la fecha y las siglas de cada partido
+Escaños_provincia_2 <-
+  Escaños_provincia |> 
+  left_join(Partidos_con_derecho_escaños) |> 
+  select(fecha, provincia, n_escaños, siglas, votos)
 
 ```
 
-------------------------------------------------------------------------
-
-## Pregunta_10 {background-image="fondo_diapos.png" background-size="cover"}
-
-Serían los resultados obtenidos similares a los reales si nos quedáramos solo con los votos de la sesión1 (por la mañana) o los de la sesión 2 (por la tarde)?
-
 ```{r}
 
+# CALCULAMOS EL REPARTO DE ESCAÑOS PARA CADA PROVINCIA CON LA LEY D'HONT
+
+# Obtener todas las provincias y fechas únicas de la tabla "Escaños_provincia_2"
+provincias <- 
+  unique(Escaños_provincia_2$provincia)
+
+fechas <- 
+  unique(Escaños_provincia_2$fecha)
+
+
+# Función de Ley D'Hondt
+dhont <- function(votos, n_escaños) {
+  divisores <- 1:n_escaños
+  tabla <- data.frame(
+    Partido = rep(names(votos), each = n_escaños),
+    Cociente = unlist(lapply(votos, function(v) v / divisores))
+  )
+  tabla <- tabla[order(-tabla$Cociente), ]
+  tabla <- head(tabla, n_escaños)
+  resultados <- as.data.frame(table(tabla$Partido))
+  colnames(resultados) <- c("Partido", "Escaños")
+  return(resultados)
+}
+# Función para calcular cuántos escaños obtiene cada partido por fecha y provincia
+calcular_escaños <- function(fecha, provincia, data) {
+  # Filtrar datos para la fecha y provincia
+  datos_filtrados <- data  |> 
+    filter(fecha == !!fecha, provincia == !!provincia)
+  
+  if (nrow(datos_filtrados) == 0) {
+    return(NULL) # Retornar NULL si no hay datos para esta combinación
+  }
+  
+  # Vector de votos y número de escaños
+  votos <- setNames(datos_filtrados$votos, datos_filtrados$siglas)
+  n_escaños <- unique(datos_filtrados$n_escaños)
+  
+  if (length(n_escaños) != 1) {
+    stop(paste("Número de escaños inconsistente para la fecha", fecha, "y provincia", provincia))
+  }
+  
+  # Aplicar la Ley D'Hondt
+  resultados <- dhont(votos, n_escaños)
+  resultados$Fecha <- fecha
+  resultados$Provincia <- provincia
+  return(resultados)
+}
+# Aplicar la función a todas las provincias y fechas
+resultados_todos <- 
+  expand.grid(fechas, provincias) |>
+  rename(Fecha = Var1, Provincia = Var2) |>
+  pmap_dfr(~ calcular_escaños(..1, ..2, Escaños_provincia_2)) |> 
+  relocate(Fecha, .before = everything()) |> 
+  relocate(Provincia, .after = Fecha)
+
+# Ver los resultados
+resultados_todos
+# Si solo queremos los resultados de Madrid
+resultados_todos |> 
+  filter(Provincia == "Madrid")
 ```
 
 ------------------------------------------------------------------------
