@@ -4,7 +4,7 @@ title-slide-attributes:
   data-background-image: portada.png
 format:
   revealjs:
-    code-block-height: 850px
+    code-block-height: 1000px
     slide-number: true
     theme: [style.scss]
     embed-resources: true
@@ -304,10 +304,12 @@ view(resumen)
 
 ## Pregunta_0 {background-image="fondo_diapos.png" background-size="cover"}
 
-::: {.fragment .fade-up}
-Mostrar un gráfico con los resultados electorales para cada año.
+::: {style="font-size: 70%;"}
+-   Mostrar un gráfico con los resultados electorales para cada año.
 
-Vamos a hacerlo con una función para que acumule en orden de votos los gráficos según la fecha porque hemos encontrado muchos problemas para que reordenara correctamente haciéndolo de manera agregada.
+-   Vamos a hacerlo con una función para que acumule en orden de votos los gráficos según la fecha porque hemos encontrado muchos problemas para que reordenara correctamente haciéndolo de manera agregada.
+
+\-
 
 ```{r}
 
@@ -568,8 +570,6 @@ segundo_cuando_pp <-
 
 ##  {background-image="fondo_diapos.png" background-size="cover"}
 
-::: columns
-::: {.column width="35%"}
 ```{r}
 # manera 2
 # Reordenar los niveles de 'siglas' en base a 'total_votos' (de mayor a menor)
@@ -579,9 +579,11 @@ segundos <- segundos |>
   mutate(siglas = fct_reorder(siglas, total_votos, .desc = TRUE)) |> 
   ungroup()
 ```
-:::
 
-::: {.column width="65%"}
+. . .
+
+\-
+
 ```{r}
 resultado <- ggplot(segundos, 
        aes(x = siglas, 
@@ -601,8 +603,14 @@ resultado <- ggplot(segundos,
         legend.position = "bottom") +
   facet_wrap(~fecha, nrow = 1, scales = "free_x")
 ```
-:::
-:::
+
+------------------------------------------------------------------------
+
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
+```{r}
+resultado
+```
 
 ------------------------------------------------------------------------
 
@@ -667,7 +675,10 @@ ggplot(correlacion, aes(x = reorder(siglas, correlacion), y = correlacion)) +
 
 -   ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que determinados partidos ganan en las zonas rurales?
 
+::: columns
+::: {.column width="50%"}
 ```{r}
+#| code-fold: true
 # ANALIZANDO RELACIÓN ENTRE CENSO Y VOTO
 
 # Calculamos el total de votos por municipio y por fecha electoral
@@ -681,7 +692,12 @@ correlacion <-
   cor(relacion_censo_votos$censo, relacion_censo_votos$Total_votos)
 print(paste("Correlación entre censo y votos totales:",
             round(correlacion, 2)))
+```
+:::
 
+::: {.column width="50%"}
+```{r}
+#| code-fold: true
 # Visualizar la correlación
 ggplot(relacion_censo_votos, aes(x = censo, y = Total_votos)) +
   geom_point(alpha = 0.7) +
@@ -692,26 +708,31 @@ ggplot(relacion_censo_votos, aes(x = censo, y = Total_votos)) +
     y = "Votos totales"
   ) +
   theme_minimal(base_family = "Rockwell")
-
 ```
+:::
+:::
+
+------------------------------------------------------------------------
+
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
+-   ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que determinados partidos ganan en las zonas rurales?
 
 ```{r}
 #| code-fold: true
 # ANALIZANDO SI CIERTOS PARTIDOS GANAN MÁS EN ZONAS RURALES QUE EN ZONAS URBANAS
-# Creamos una tabla en donde guardamos el tipo de zona según el censo:  Rural o Urbano
-rurales_urbanas <-
+ # Creamos una tabla en donde guardamos el tipo de zona según el censo:  Rural o Urbano
+ rurales_urbanas <-
   resumen |> 
   mutate("Zona" = ifelse(censo < 10000, 
                          "Rural", 
                          "Urbano"))
-
 # Calculamos los votos de cada partido para cada tipo de zona en cada elección
 votos_por_zona <-
   rurales_urbanas |> 
   group_by(fecha, Zona, siglas) |> 
   summarise(Total_votos = sum(votos), 
             .groups = "drop")
-
 # Creamos el gráfico que muestre las diferencias entre partidos, tipos de zona y fechas de elecciones
 ggplot(votos_por_zona, 
        aes(x = siglas, y = Total_votos, fill = Zona)) +
@@ -724,10 +745,8 @@ ggplot(votos_por_zona,
     fill = "Zona") +
   theme_minimal(base_family = "Rockwell") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
 # Como era de esperar, nos salen 6 gráficos (uno por cada fecha electoral) pero el problema es que puede ser bastante complicado de entender a la hora de exponerlo. Es por ello que creo conveniente poner 3 gráficos pero por separados que muestren cómo ha ido evolucionando los votos a lo largo del tiempo, por ejemplo el gráfico del 2008, el del 2016 y el del 2019
 # GRÁFICOS 2008, 2016 Y 2019
-
 # 2008
 votos_por_zona_2008 <-
   rurales_urbanas |> 
@@ -746,7 +765,6 @@ zona_2008 <-
   theme_minimal(base_family = "Rockwell") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
   theme(plot.title = element_text(size = 11))
-
 # 2016
 votos_por_zona_2016 <-
   rurales_urbanas |> 
@@ -766,14 +784,12 @@ zona_2016 <-
   theme(axis.text.x = element_text(angle = 45, 
                                    hjust = 1)) + 
   theme(plot.title = element_text(size = 11))
-
 # 2019 (la última)
 votos_por_zona_2019 <-
   rurales_urbanas |> 
   filter(fecha == "2019-11-01") |> 
   group_by(Zona, siglas) |> 
   summarise(Total_votos = sum(votos), .groups = "drop")
-
 zona_2019 <-
   ggplot(votos_por_zona_2019, aes(x = siglas, 
                                   y = Total_votos, 
@@ -786,22 +802,46 @@ zona_2019 <-
     fill = "Zona"
   ) +
   theme_minimal(base_family = "Rockwell") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  theme(plot.title = element_text(size = 11))
+   theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+   theme(plot.title = element_text(size = 11))
 
-plotly::ggplotly(zona_2008)
-plotly::ggplotly(zona_2016)
-plotly::ggplotly(zona_2019)
 
 ```
 
 ------------------------------------------------------------------------
 
-## Pregunta_5 {background-image="fondo_diapos.png" background-size="cover"}
+##  {background-image="fondo_diapos.png" background-size="cover"}
 
--   ¿Cómo calibrar el error de las encuestas (recordemos que las encuestas son de intención de voto a nivel nacional)?
+::: columns
+::: {.column width="50%"}
+```{r}
+
+plotly::ggplotly(zona_2008)
+```
+:::
+
+::: {.column width="50%"}
+```{r}
+plotly::ggplotly(zona_2016)
+```
+:::
+:::
 
 ```{r}
+
+plotly::ggplotly(zona_2019)
+```
+
+------------------------------------------------------------------------
+
+##  {background-image="fondo_diapos.png" background-size="cover"}
+
+::: {style="font-size: 50%;"}
+Pregunta 5: ¿Cómo calibrar el error de las encuestas ?
+:::
+
+```{r}
+#| code-fold: true
 #dar el mismo formato de resumen a surveys
 
 surveys_2 <- surveys |> 
@@ -908,82 +948,66 @@ Sugerencia: Añadir un gráfico interactivo como este donde los puntos son las p
 
 ## Pregunta_8 {background-image="fondo_diapos.png" background-size="cover"}
 
+::: {style="font-size: 70%;"}
 Elaborar mapas de España con ganadores y participacion por provincia y ccaa
+:::
 
+::: columns
+::: {.column width="50%"}
 ```{r}
 totales_election_data <- 
   election_data |> 
-  # Extraer los primeros cuatro dígitos y crear una nueva columna de codigo de provincia
   mutate(provincia = substr(id_municipio, 1, 4)) |> 
   group_by(provincia, fecha) |> 
   summarise(
     total_votos = sum(votos, na.rm = TRUE),
-    # Sumar el total de votos
     censo = mean(censo, na.rm = TRUE),
-    # Calcular el promedio del censo
     participacion = total_votos / censo,
-    # Calcular la participación
     .groups = "drop"
-    # Eliminar los grupos
   )
 ```
+:::
 
+::: {.column width="50%"}
 ```{r}
 ganadores_todos <- 
   resumen |> 
-  # Extraer los primeros cuatro dígitos y crear una nueva columna de codigo de provincia
   mutate(provincia = substr(id_municipio, 1, 4)) |> 
   group_by(fecha, provincia) |>
   summarise(
     partido_ganador = siglas[which.max(votos)],
-    # Encontrar el partido con más votos
     max_votos = max(votos),
-    # Encontrar el número máximo de votos
     total_votos = sum(votos), 
-     # Calcular el total de votos
     .groups = "drop"      
   )
-
 ```
+:::
+:::
+
+\-
 
 ```{r}
 # Combinar datos de totales y ganadores
-ganadores_por_anno <- 
-  totales_election_data |> 
+ganadores_por_anno <- totales_election_data |> 
   inner_join(ganadores_todos, by = c("provincia", "fecha")) |> 
-  # Dividir la columna cpro en codauto (primeros 2 dígitos) y cpro (últimos 2 dígitos)
-  mutate(codauto = substr(provincia, 1, 2),
-         cpro = substr(provincia, 3, 4))
-```
-
-```{r}
+  # Dividir la columna cpro en codauto  y cpro 
+  mutate(codauto = substr(provincia, 1, 2),cpro = substr(provincia, 3, 4))
 
 # Obtener el mapa de provincias
-data_provincias <- 
-  esp_get_prov()
-  
-# Unir los datos de ganadores y participación al mapa
-mapa_datos <- 
-  data_provincias |> 
-  left_join(ganadores_por_anno, by = "cpro")
+data_provincias <- esp_get_prov()
+mapa_datos <- data_provincias |> left_join(ganadores_por_anno, by = "cpro")
+```
 
+------------------------------------------------------------------------
 
+##  {background-image="fondo_diapos.png" background-size="cover"}
 
-ggplot(mapa_datos) +
-  geom_sf(aes(fill = partido_ganador,
-              alpha = participacion), 
-          color = "white", 
-          size = 0.2) +
-  scale_fill_manual(values = colores, name = "Partido Ganador")+
-  facet_wrap(~fecha)+
-  labs(
-    title = "Ganadores y Participación por Provincia en España",
-    subtitle = "Alpha representa la participación"
-  ) +
+```{r}
+ggplot(mapa_datos) + geom_sf(aes(fill = partido_ganador, alpha = participacion), color = "white", size = 0.2) + scale_fill_manual(values = colores, name = "Partido Ganador")+ facet_wrap(~fecha)+
+  labs(title = "Ganadores y Participación por Provincia en España",
+    subtitle = "Alpha representa la participación") +
   guides(alpha = "none") +
   theme_minimal(base_family = "Rockwell") 
-  
-
 ```
 
 ------------------------------------------------------------------------
@@ -998,18 +1022,8 @@ Se suele decir que la población de Zaragoza es una muestra representativa de la
 
 ------------------------------------------------------------------------
 
-## Pregunta_10 {background-image="fondo_diapos.png" background-size="cover"}
-
-Serían los resultados obtenidos similares a los reales si nos quedáramos solo con los votos de la sesión1 (por la mañana) o los de la sesión 2 (por la tarde)?
-
-```{r}
-
-```
-
-------------------------------------------------------------------------
-
 ##  {background-image="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHRwOHhpOTk0OTN4cTBkZzl2eWtmdjRzbnMzdHZmM3BjejdmeHc2ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/KAdawkDvVuacWBfgbc/giphy.gif" background-size="contain"}
 
 ::: r-fit-text
-FIN
+FIN 
 :::
