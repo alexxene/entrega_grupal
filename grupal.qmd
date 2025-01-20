@@ -1229,7 +1229,7 @@ totales_election_data <-
   group_by(provincia, fecha) |> 
   summarise(
     total_votos = sum(votos, na.rm = TRUE),
-    censo = mean(censo, na.rm = TRUE),
+    censo = sum(censo,na.rm = TRUE),
     participacion = total_votos / censo,
     .groups = "drop"
   )
